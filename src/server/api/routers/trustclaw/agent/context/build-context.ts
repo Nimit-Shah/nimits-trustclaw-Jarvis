@@ -1,4 +1,5 @@
 import { z } from "zod";
+import moment from "moment-timezone";
 import { db } from "~/server/clients/db";
 import type { Prisma } from "~/generated/prisma/client";
 import type {
@@ -127,6 +128,8 @@ export function buildContext(
   dbMessages: Awaited<ReturnType<typeof loadContextMessages>>,
   lastCompactionSummary: string | null,
   userMessage: string,
+  relevantMemories?: string[],
+  userTimezone?: string,
 ): ReconstructedMessage[] {
   const aiMessages = deepSanitize(reconstructMessages(dbMessages));
 
@@ -139,7 +142,18 @@ export function buildContext(
     });
   }
 
-  aiMessages.push({ role: "user" as const, content: sanitizeString(userMessage) });
+  let finalUserMessage = "";
+  if (userTimezone) {
+    const userTime = moment().tz(userTimezone);
+    finalUserMessage += `[Current Time: ${userTime.format("dddd, MMMM D, YYYY h:mm A")} (${userTimezone})]\n\n`;
+  }
+  if (relevantMemories && relevantMemories.length > 0) {
+    const memoryLines = relevantMemories.map((m) => `- ${m}`).join("\n");
+    finalUserMessage += `[Relevant Memories]\n${memoryLines}\n\n`;
+  }
+  finalUserMessage += userMessage;
+
+  aiMessages.push({ role: "user" as const, content: sanitizeString(finalUserMessage) });
 
   return aiMessages;
 }

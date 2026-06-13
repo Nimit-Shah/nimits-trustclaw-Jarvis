@@ -98,9 +98,7 @@ export async function prepareAgentRun(
       soulPrompt: instance.soulPrompt,
       identityPrompt: instance.identityPrompt,
       userPrompt: instance.userPrompt,
-      relevantMemories,
       hasCompactionSummary: !!instance.lastCompactionSummary,
-      userTimezone,
     }),
   );
 
@@ -112,6 +110,8 @@ export async function prepareAgentRun(
     dbMessages,
     instance.lastCompactionSummary,
     userMessage,
+    relevantMemories,
+    userTimezone,
   );
 
   const contextWindow = getContextWindow(instance.anthropicModel);

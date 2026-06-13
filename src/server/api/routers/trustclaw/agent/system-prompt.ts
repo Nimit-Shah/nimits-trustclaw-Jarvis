@@ -6,7 +6,7 @@ interface SystemPromptParams {
   userPrompt: string | null;
   relevantMemories?: string[];
   hasCompactionSummary?: boolean;
-  userTimezone: string;
+  userTimezone?: string;
 }
 
 const DEFAULT_SOUL_PROMPT = `## Who You Are
@@ -200,10 +200,12 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
     );
   }
 
-  const userTime = moment().tz(params.userTimezone);
-  sections.push(
-    `## Current Time\n\n${userTime.format("dddd, MMMM D, YYYY h:mm A")} (${params.userTimezone})`,
-  );
+  if (params.userTimezone) {
+    const userTime = moment().tz(params.userTimezone);
+    sections.push(
+      `## Current Time\n\n${userTime.format("dddd, MMMM D, YYYY h:mm A")} (${params.userTimezone})`,
+    );
+  }
 
   return sections.join("\n\n---\n\n");
 }
