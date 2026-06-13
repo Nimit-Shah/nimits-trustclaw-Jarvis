@@ -183,3 +183,4 @@ For security issues, email [sarah@composio.dev](mailto:sarah@composio.dev) direc
 MIT - see [LICENSE](./LICENSE).
 
 Built on top of [Composio](https://composio.dev). Inspired by [OpenClaw](https://github.com/openclaw/openclaw), rebuilt for security.
+# nimits-trustclaw-Jarvis
