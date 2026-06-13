@@ -6,6 +6,7 @@ import {
   memorySearchSchema,
   type MemorySearchInput,
 } from "./memory-search.schema";
+import { ollamaProvider } from "~/server/clients/ollama";
 
 const memorySearchResultRow = z.object({
   id: z.string(),
@@ -31,11 +32,8 @@ export function createMemorySearchTool(instanceId: string): Tool<
     execute: async ({ query, maxResults }) => {
       const limit = maxResults ?? 5;
       const { embedding: queryEmbedding } = await embed({
-        model: "openai/text-embedding-3-large",
+        model: ollamaProvider.embedding("qllama/bge-small-en-v1.5"),
         value: query,
-        providerOptions: {
-          openai: { dimensions: 1024 },
-        },
       });
       const embeddingString = `[${queryEmbedding.join(",")}]`;
 
@@ -69,11 +67,8 @@ export async function searchMemoriesForContext(
 ): Promise<string[]> {
   try {
     const { embedding: queryEmbedding } = await embed({
-      model: "openai/text-embedding-3-large",
+      model: ollamaProvider.embedding("qllama/bge-small-en-v1.5"),
       value: query,
-      providerOptions: {
-        openai: { dimensions: 1024 },
-      },
     });
     const embeddingString = `[${queryEmbedding.join(",")}]`;
 

@@ -3,6 +3,7 @@ import type { ToolSet, SystemModelMessage } from "ai";
 import { db } from "~/server/clients/db";
 import { createComposioClient } from "~/server/clients/composio";
 import { buildSystemPrompt } from "./system-prompt";
+import { ollamaProvider } from "~/server/clients/ollama";
 import {
   createCustomTools,
   searchMemoriesForContext,
@@ -116,9 +117,11 @@ export async function prepareAgentRun(
   const contextWindow = getContextWindow(instance.anthropicModel);
   const { messages: prunedMessages } = pruneContext(aiMessages, contextWindow);
 
+  const isOllama = instance.anthropicModel === "qwen3:8b";
+
   // Add cache breakpoint to last history message (before new user message)
   // so the conversation prefix is cached across turns
-  if (prunedMessages.length >= 2) {
+  if (!isOllama && prunedMessages.length >= 2) {
     const lastHistoryIndex = prunedMessages.length - 2;
     const msg = prunedMessages[lastHistoryIndex]!;
     prunedMessages[lastHistoryIndex] = {
@@ -168,19 +171,22 @@ export async function prepareAgentRun(
     },
   });
 
-  const modelString = instance.anthropicModel.startsWith("anthropic/")
-    ? instance.anthropicModel
-    : `anthropic/${instance.anthropicModel}`;
-  const model = modelString;
+  const model = isOllama
+    ? ollamaProvider("qwen3:8b")
+    : (instance.anthropicModel.startsWith("anthropic/")
+        ? instance.anthropicModel
+        : `anthropic/${instance.anthropicModel}`);
 
   const agent = new ToolLoopAgent({
     model,
     instructions: {
       role: "system",
       content: systemPrompt,
-      providerOptions: {
-        anthropic: { cacheControl: { type: "ephemeral" } },
-      },
+      ...(!isOllama && {
+        providerOptions: {
+          anthropic: { cacheControl: { type: "ephemeral" } },
+        },
+      }),
     } satisfies SystemModelMessage,
     tools: allTools,
     stopWhen: stepCountIs(100),

@@ -22,7 +22,7 @@ const connectionResultSchema = z
 
 const manageConnectionsDataSchema = z
   .object({
-    results: z.record(connectionResultSchema),
+    results: z.record(z.string(), connectionResultSchema),
     message: z.string().optional(),
   })
   .passthrough();

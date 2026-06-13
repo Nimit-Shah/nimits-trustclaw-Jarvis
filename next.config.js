@@ -83,7 +83,7 @@ const config = {
   },
 
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
 };
 

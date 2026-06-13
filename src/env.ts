@@ -1,9 +1,10 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
-const booleanString = z
-  .enum(["true", "false"])
-  .transform((value) => value === "true");
+const booleanString = z.preprocess(
+  (val) => (val === "true" ? true : val === "false" ? false : val),
+  z.boolean(),
+);
 
 export const env = createEnv({
   server: {
@@ -37,16 +38,19 @@ export const env = createEnv({
       .int()
       .positive()
       .default(20),
-    RATE_LIMIT_FAIL_MODE: z.enum(["open", "closed"]),
-    RATE_LIMIT_ENABLED: booleanString.default("true"),
+    RATE_LIMIT_FAIL_MODE: z.enum(["open", "closed"]).default("open"),
+    RATE_LIMIT_ENABLED: booleanString.default(true),
 
     // Cron auth. Required in production so unauthenticated callers can't hit
     // /api/cron/* endpoints. Vercel auto-injects this when crons are configured
     // in vercel.json; the trustclaw deploy CLI also generates one on first deploy.
     CRON_SECRET: z.string(),
+
+    // Ollama (local)
+    OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
   },
   client: {
-    NEXT_PUBLIC_APP_URL: z.string().url(),
+    NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   },
   runtimeEnv: {
     // Server
@@ -70,6 +74,7 @@ export const env = createEnv({
         : "closed"),
     RATE_LIMIT_ENABLED: process.env.RATE_LIMIT_ENABLED,
     CRON_SECRET: process.env.CRON_SECRET,
+    OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
 
     // Client URL resolution:
     //  - dev: derive from PORT so `PORT=3001 pnpm dev` just works

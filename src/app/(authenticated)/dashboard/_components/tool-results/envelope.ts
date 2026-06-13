@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const toolExecuteResponseSchema = z
   .object({
-    data: z.record(z.unknown()).optional(),
+    data: z.record(z.string(), z.unknown()).optional(),
     error: z.string().nullable().optional(),
     successful: z.boolean().optional(),
   })

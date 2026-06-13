@@ -38,6 +38,12 @@ export const CURATED_EMOJIS = [
 
 export const MODELS = [
   {
+    value: "qwen3:8b" as const,
+    label: "Ollama Qwen3 8B",
+    description: "Local model running on your machine",
+    cost: "Free",
+  },
+  {
     value: "claude-opus-4-6" as const,
     label: "Claude Opus 4.6",
     description: "Most capable",

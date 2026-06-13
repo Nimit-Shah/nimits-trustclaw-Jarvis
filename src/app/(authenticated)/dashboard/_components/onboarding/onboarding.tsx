@@ -115,7 +115,7 @@ export function Onboarding({
       lore: savedState?.lore ?? "",
       anthropicModel: parsedModel.success
         ? parsedModel.data
-        : "claude-sonnet-4-5-20250929",
+        : "qwen3:8b",
     };
   });
 

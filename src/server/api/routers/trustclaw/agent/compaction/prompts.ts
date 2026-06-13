@@ -143,7 +143,7 @@ export function serializeMessages(messages: ReconstructedMessage[]): string {
   return lines.join("\n");
 }
 
-const plainRecordSchema = z.record(z.unknown());
+const plainRecordSchema = z.record(z.string(), z.unknown());
 
 function formatToolArgs(input: unknown): string {
   if (input === null || input === undefined) return "";

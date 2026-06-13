@@ -16,6 +16,11 @@ import {
 
 const MODELS = [
   {
+    value: "qwen3:8b",
+    label: "Ollama Qwen3 8B",
+    description: "Local model running on your machine",
+  },
+  {
     value: "claude-opus-4-6",
     label: "Claude Opus 4.6",
     description: "Most capable",
@@ -39,7 +44,7 @@ interface ModelSettingsProps {
 }
 
 export function ModelSettings({ currentModel }: ModelSettingsProps) {
-  const parsed = allowedAnthropicModelSchema.catch("claude-sonnet-4-5-20250929").parse(currentModel);
+  const parsed = allowedAnthropicModelSchema.catch("qwen3:8b").parse(currentModel);
   const [selectedModel, setSelectedModel] = useState<AllowedModel>(parsed);
   const utils = trpc.useUtils();
 

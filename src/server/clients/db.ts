@@ -2,9 +2,12 @@ import { PrismaClient } from "~/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { env } from "~/env";
 
-function ensureVerifyFullSsl(url: string): string {
+function ensureDefaultSsl(url: string): string {
   const parsed = new URL(url);
-  if (parsed.searchParams.get("sslmode") !== "verify-full") {
+  // Only set secure default when the URL doesn't already specify sslmode.
+  // This allows local dev to use ?sslmode=disable while cloud URLs (Neon, etc.)
+  // that have no sslmode get the safe production default of verify-full.
+  if (!parsed.searchParams.has("sslmode")) {
     parsed.searchParams.set("sslmode", "verify-full");
   }
   return parsed.toString();
@@ -12,7 +15,7 @@ function ensureVerifyFullSsl(url: string): string {
 
 const createPrismaClient = () => {
   const adapter = new PrismaPg({
-    connectionString: ensureVerifyFullSsl(env.DATABASE_URL),
+    connectionString: ensureDefaultSsl(env.DATABASE_URL),
   });
 
   return new PrismaClient({

@@ -22,7 +22,7 @@ export const saveOnboardingStateInput = z.object({
   emoji: z.string().nullable().default(null),
   lore: z.string().default(""),
   anthropicModel: allowedAnthropicModelSchema.default(
-    "claude-sonnet-4-5-20250929",
+    "qwen3:8b",
   ),
 });
 

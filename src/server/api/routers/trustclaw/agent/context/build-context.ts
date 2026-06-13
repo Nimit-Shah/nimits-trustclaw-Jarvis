@@ -50,7 +50,7 @@ export const contentPartSchema = z.object({
 
 export const contentSchema = z.array(contentPartSchema);
 
-export const plainRecordSchema = z.record(z.unknown());
+export const plainRecordSchema = z.record(z.string(), z.unknown());
 
 export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([
@@ -59,7 +59,7 @@ export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
     z.number(),
     z.boolean(),
     z.array(jsonValueSchema),
-    z.record(jsonValueSchema),
+    z.record(z.string(), jsonValueSchema),
   ]),
 );
 
@@ -182,7 +182,7 @@ export function reconstructMessages(
     const toolParts = contentArray
       .map((item: unknown) => dynamicToolPartSchema.safeParse(item))
       .filter(
-        (r): r is z.SafeParseSuccess<z.infer<typeof dynamicToolPartSchema>> =>
+        (r): r is z.ZodSafeParseSuccess<z.infer<typeof dynamicToolPartSchema>> =>
           r.success,
       )
       .map((r) => r.data);

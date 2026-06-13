@@ -2,6 +2,7 @@ import { zodSchema, embed } from "ai";
 import type { Tool } from "ai";
 import { db } from "~/server/clients/db";
 import { memorySaveSchema, type MemorySaveInput } from "./memory-save.schema";
+import { ollamaProvider } from "~/server/clients/ollama";
 
 export function createMemorySaveTool(
   instanceId: string,
@@ -11,11 +12,8 @@ export function createMemorySaveTool(
     inputSchema: zodSchema(memorySaveSchema),
     execute: async ({ content }) => {
       const { embedding } = await embed({
-        model: "openai/text-embedding-3-large",
+        model: ollamaProvider.embedding("qllama/bge-small-en-v1.5"),
         value: content,
-        providerOptions: {
-          openai: { dimensions: 1024 },
-        },
       });
       const embeddingString = `[${embedding.join(",")}]`;
       const id = crypto.randomUUID();

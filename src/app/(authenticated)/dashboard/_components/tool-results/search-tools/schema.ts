@@ -41,7 +41,7 @@ const searchToolsDataSchema = z
   .object({
     results: z.array(searchResultSchema),
     toolkit_connection_statuses: z.array(connectionStatusSchema),
-    tool_schemas: z.record(toolSchemaSchema),
+    tool_schemas: z.record(z.string(), toolSchemaSchema),
     time_info: z.unknown().optional(),
     next_steps_guidance: z.array(z.string()).optional(),
   })

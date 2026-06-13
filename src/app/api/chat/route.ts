@@ -16,7 +16,7 @@ const chatRequestBody = z.object({
     z.object({
       role: z.enum(["user", "assistant", "system"]),
       content: z.string().optional(),
-      parts: z.array(z.record(z.unknown())).optional(),
+      parts: z.array(z.record(z.string(), z.unknown())).optional(),
     }),
   ),
 });

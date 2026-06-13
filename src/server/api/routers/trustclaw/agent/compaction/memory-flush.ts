@@ -1,4 +1,5 @@
 import { generateText, stepCountIs } from "ai";
+import { ollamaProvider } from "~/server/clients/ollama";
 import { db } from "~/server/clients/db";
 import { createCustomTools } from "../tools";
 import { serializeMessages } from "./prompts";
@@ -50,9 +51,12 @@ export async function runMemoryFlush(
       return { memoriesSaved: 0 };
     }
 
-    const modelString = anthropicModel.startsWith("anthropic/")
-      ? anthropicModel
-      : `anthropic/${anthropicModel}`;
+    const isOllama = anthropicModel === "qwen3:8b";
+    const model = isOllama
+      ? ollamaProvider("qwen3:8b")
+      : (anthropicModel.startsWith("anthropic/")
+          ? anthropicModel
+          : `anthropic/${anthropicModel}`);
 
     const allCustomTools = createCustomTools(instanceId);
     const memoryTools = {
@@ -64,7 +68,7 @@ export async function runMemoryFlush(
     const flushPrompt = `Here is the recent conversation context:\n\n${contextSummary}\n\n${FLUSH_USER_PROMPT}`;
 
     const result = await generateText({
-      model: modelString,
+      model,
       system: FLUSH_SYSTEM_PROMPT,
       messages: [{ role: "user" as const, content: flushPrompt }],
       tools: memoryTools,
