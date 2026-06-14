@@ -190,6 +190,14 @@ export async function prepareAgentRun(
     } satisfies SystemModelMessage,
     tools: allTools,
     stopWhen: stepCountIs(100),
+    // Disable Qwen3 thinking mode to prevent empty-output errors
+    // and cut token generation time in half
+    ...(isOllama && {
+      providerOptions: {
+        ollama: { think: false },
+      },
+      maxTokens: 1024,
+    }),
     onFinish: async (result) => {
       try {
         const { totalUsage, steps } = result;
