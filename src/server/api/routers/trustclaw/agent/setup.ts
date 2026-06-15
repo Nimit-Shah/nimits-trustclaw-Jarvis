@@ -91,6 +91,8 @@ export async function prepareAgentRun(
 
   const userTimezone = user?.timezone ?? "UTC";
 
+  const isOllama = instance.anthropicModel === "qwen3:8b";
+
   const relevantMemories = await searchMemoriesForContext(instanceId, userMessage);
 
   const systemPrompt = sanitizeString(
@@ -99,6 +101,7 @@ export async function prepareAgentRun(
       identityPrompt: instance.identityPrompt,
       userPrompt: instance.userPrompt,
       hasCompactionSummary: !!instance.lastCompactionSummary,
+      isOllama,
     }),
   );
 
@@ -116,8 +119,6 @@ export async function prepareAgentRun(
 
   const contextWindow = getContextWindow(instance.anthropicModel);
   const { messages: prunedMessages } = pruneContext(aiMessages, contextWindow);
-
-  const isOllama = instance.anthropicModel === "qwen3:8b";
 
   // Add cache breakpoint to last history message (before new user message)
   // so the conversation prefix is cached across turns
@@ -172,7 +173,10 @@ export async function prepareAgentRun(
   });
 
   const model = isOllama
-    ? ollamaProvider("qwen3:8b")
+    ? ollamaProvider("qwen3:8b", {
+        keep_alive: -1,
+        options: { num_ctx: getContextWindow("qwen3:8b") },
+      })
     : (instance.anthropicModel.startsWith("anthropic/")
         ? instance.anthropicModel
         : `anthropic/${instance.anthropicModel}`);
@@ -189,14 +193,18 @@ export async function prepareAgentRun(
       }),
     } satisfies SystemModelMessage,
     tools: allTools,
+    // Step limit is kept at 100 to allow complex agentic workflows,
+    // but the optimized model setup prevents runaways on simple turns.
     stopWhen: stepCountIs(100),
     // Disable Qwen3 thinking mode to prevent empty-output errors
-    // and cut token generation time in half
+    // and cut token generation time in half.
+    // maxTokens: 512 caps conversational replies; tool-call responses are
+    // not bound by this since they stream until the tool schema is complete.
     ...(isOllama && {
       providerOptions: {
         ollama: { think: false },
       },
-      maxTokens: 1024,
+      maxTokens: 512,
     }),
     onFinish: async (result) => {
       try {
@@ -248,9 +256,15 @@ export async function prepareAgentRun(
 
         // Fire-and-forget post-response tasks
         const totalContextTokens = inputTokens + outputTokens;
+        // For qwen3:8b (32K context), use smaller reserve/keep windows so we
+        // leave more of the context for actual conversation history.
+        const ollamaCompactionSettings = {
+          reserveTokens: 8_000,
+          keepRecentTokens: 8_000,
+        };
         const settings: CompactionSettings = {
           contextWindow,
-          ...DEFAULT_COMPACTION_SETTINGS,
+          ...(isOllama ? ollamaCompactionSettings : DEFAULT_COMPACTION_SETTINGS),
         };
 
         void runPostResponseTasks({

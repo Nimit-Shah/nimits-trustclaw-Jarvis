@@ -7,6 +7,8 @@ interface SystemPromptParams {
   relevantMemories?: string[];
   hasCompactionSummary?: boolean;
   userTimezone?: string;
+  /** When true, use a compact tool description to save tokens for local LLM */
+  isOllama?: boolean;
 }
 
 const DEFAULT_SOUL_PROMPT = `## Who You Are
@@ -105,6 +107,27 @@ When tool results are large or need processing, use the workbench.
 - **Never dump raw results.** Summarize tool output in natural language.
 - **Use \`thought\` fields.** They help with debugging and make your reasoning visible.`;
 
+/**
+ * Compact version of the Composio tool instructions for local/Ollama LLM runs.
+ * ~300 tokens vs ~800 for the full version. Prevents spurious tool searches
+ * on conversational queries where the full workflow docs confuse local models.
+ */
+const COMPOSIO_TOOLS_DESCRIPTION_COMPACT = `## External Tools (Composio)
+
+You have access to 500+ external service integrations via Composio tools.
+
+**Only call tools when the user explicitly asks you to interact with an external service** (e.g. "send an email", "check my calendar", "create a GitHub issue"). Do NOT call tools for general conversation, greetings, or questions you can answer from your own knowledge.
+
+Workflow when the user needs external services:
+1. **COMPOSIO_SEARCH_TOOLS** — search for the right tool slug first. Never guess slugs.
+2. **COMPOSIO_MANAGE_CONNECTIONS** — if a service isn't connected, get an OAuth URL and present it to the user. Then call COMPOSIO_WAIT_FOR_CONNECTIONS.
+3. **COMPOSIO_MULTI_EXECUTE_TOOL** — execute with a \`thought\` and \`session_id\`.
+
+Rules:
+- Do NOT call COMPOSIO_SEARCH_TOOLS for queries that do not require external services.
+- Never dump raw JSON results to the user. Summarize naturally.
+- Never fabricate connection URLs — only use what MANAGE_CONNECTIONS returns.`;
+
 const CUSTOM_TOOLS_DESCRIPTION = `## Your Custom Tools
 
 Beyond the Composio Tool Router, you have these built-in capabilities:
@@ -168,7 +191,7 @@ const MESSAGING_GUIDELINES = `## Messaging Style
 export function buildSystemPrompt(params: SystemPromptParams): string {
   const sections: string[] = [];
 
-  sections.push("# TrustClaw by Composio Agent");
+  sections.push("# TrustClaw Agent");
 
   if (params.soulPrompt) {
     sections.push(params.soulPrompt);
@@ -184,7 +207,13 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
     sections.push(params.userPrompt);
   }
 
-  sections.push(COMPOSIO_TOOLS_DESCRIPTION);
+  // Use compact tool description for local Ollama runs to save ~500 tokens
+  // and avoid confusing local LLMs into calling tools for simple queries.
+  sections.push(
+    params.isOllama
+      ? COMPOSIO_TOOLS_DESCRIPTION_COMPACT
+      : COMPOSIO_TOOLS_DESCRIPTION,
+  );
   sections.push(CUSTOM_TOOLS_DESCRIPTION);
   sections.push(SCHEDULED_TASK_NOTE);
   sections.push(MESSAGING_GUIDELINES);
@@ -193,19 +222,9 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
     sections.push(SESSION_CONTINUITY_NOTE);
   }
 
-  if (params.relevantMemories && params.relevantMemories.length > 0) {
-    const memoryLines = params.relevantMemories.map((m) => `- ${m}`).join("\n");
-    sections.push(
-      `## Relevant Memories\n\nMemories from past conversations that may be relevant to the current message:\n\n${memoryLines}`,
-    );
-  }
-
-  if (params.userTimezone) {
-    const userTime = moment().tz(params.userTimezone);
-    sections.push(
-      `## Current Time\n\n${userTime.format("dddd, MMMM D, YYYY h:mm A")} (${params.userTimezone})`,
-    );
-  }
+  // NOTE: relevantMemories and userTimezone are intentionally NOT rendered here.
+  // They are dynamic per-request and are prepended to the user message in buildContext()
+  // so that the static system prompt can be prefix-cached by the LLM.
 
   return sections.join("\n\n---\n\n");
 }
