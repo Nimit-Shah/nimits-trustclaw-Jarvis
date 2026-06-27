@@ -61,16 +61,19 @@ export function TerminalPane({ messages, status, onHide }: TerminalPaneProps) {
   const toolCount = useToolCallCount(messages);
 
   const logEntries = useMemo(() => {
-    const entries: TerminalLogEntryData[] = [];
+    const entriesMap = new Map<string, TerminalLogEntryData>();
     for (const msg of messages) {
       if (msg.role !== "assistant") continue;
       for (const part of msg.parts) {
         if (isToolUIPart(part)) {
-          entries.push(toolCallToLogEntry(part, status));
+          const entry = toolCallToLogEntry(part, status);
+          // If we already have an entry for this tool call, keep it unless the new one is more "complete"
+          // In practice, the later part is usually the result or the most updated state.
+          entriesMap.set(entry.id, entry);
         }
       }
     }
-    return entries;
+    return Array.from(entriesMap.values());
   }, [messages, status]);
 
   const lastToolCallIdRef = useRef<string | null>(null);

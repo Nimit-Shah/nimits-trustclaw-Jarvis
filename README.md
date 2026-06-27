@@ -7,14 +7,15 @@
 ---
 
 ## 🎯 The Aim
-To run a robust, **24x7 personal agent** on your local machine using state-of-the-art **open-source AI models** (Ollama `qwen3:8b` and `qllama/bge-small-en-v1.5` embeddings) integrated with **Composio** to securely authenticate and control external services (Slack, Gmail, GitHub, Notion, etc.) via OAuth.
+To run a robust, **24x7 personal agent** on your local machine using state-of-the-art **open-source AI models** (Ollama `qwen3:8b` and `qllama/bge-small-en-v1.5` embeddings) or cloud models via **OpenRouter** and **Vercel AI SDK**. Integrated with **Composio** to securely authenticate and control external services (Slack, Gmail, GitHub, Notion, etc.) via OAuth, all protected by a robust **PII Encryption Layer** that ensures your personal data never leaks to external models.
 
 ---
 
 ## ✨ Features
 
 * 🔌 **Composio OAuth Integration:** Securely connect and control over 1,000+ external apps and services using Composio. No raw API keys are ever exposed to the agent.
-* 🧠 **100% Local Intelligence:** Powered by Alibaba's **`qwen3:8b`** LLM and **`qllama/bge-small-en-v1.5`** embeddings running locally on your hardware. Zero dependency on OpenAI or Anthropic API bills.
+* 🧠 **Multi-Gateway Intelligence:** Powered by local models (Ollama) or external cloud models via **OpenRouter** and **Vercel AI SDK**, offering ultimate flexibility and choice.
+* 🛡 **PII Protection Layer:** When using cloud models, sensitive data (emails, phone numbers, names) is automatically redacted before leaving your machine and restored upon response. Local models bypass this for speed.
 * 💾 **Semantic Memory:** Persistent memory storage using Postgres and `pgvector` with `384`-dimension vectors.
 * 💤 **Auto-Autopilot (Cron Jobs):** Schedule recurring background tasks (e.g. daily summaries, inbox cleaning, automated reports) that trigger the agent 24/7.
 * 🔐 **Privacy-First & Secure:** Sensitive credentials stay encrypted. Destructive scripts are locked within Composio's sandboxed environment.
@@ -35,10 +36,17 @@ To run a robust, **24x7 personal agent** on your local machine using state-of-th
 │                                 Local Machine / Server                                 │
 │                                                                                        │
 │   ┌───────────────────────┐         ┌────────────────────┐         ┌───────────────┐   │
-│   │    Next.js Backend    │◄───────▶│    Ollama Engine   │◄───────▶│ Postgres DB   │   │
-│   │ (tRPC & Agent Loop)   │         │ (qwen3:8b + BGE)   │         │  (pgvector)   │   │
-│   └───────────┬───────────┘         └────────────────────┘         └───────────────┘   │
-│               │                                                                        │
+│   │    Next.js Backend    │◄───────▶│  PII Encryption    │◄───────▶│ Postgres DB   │   │
+│   │ (tRPC & Agent Loop)   │         │       Layer        │         │  (pgvector)   │   │
+│   └───────────┬───────────┘         └─────────┬──────────┘         └───────────────┘   │
+│               │                               │                                        │
+│               │                      ┌────────┴────────┐                               │
+│               │                      ▼                 ▼                               │
+│               │             ┌─────────────────┐ ┌────────────────┐                     │
+│               │             │   Local LLMs    │ │   Cloud LLMs   │                     │
+│               │             │(Ollama Engine)  │ │ (OpenRouter /  │                     │
+│               │             │                 │ │ Vercel AI SDK) │                     │
+│               │             └─────────────────┘ └────────────────┘                     │
 └───────────────┼────────────────────────────────────────────────────────────────────────┘
                 │
                 ▼
@@ -89,6 +97,7 @@ Edit the `.env` file and fill in:
 * `BETTER_AUTH_SECRET`: Generate a random signing key (e.g., `openssl rand -base64 32`)
 * `COMPOSIO_API_KEY`: Get a free developer API key from [Composio Dashboard](https://dashboard.composio.dev/)
 * `OLLAMA_BASE_URL`: Defaults to `http://localhost:11434`
+* `OPENROUTER_API_KEY`: Get an API key from [OpenRouter](https://openrouter.ai/) if you plan to use external cloud models.
 
 ### 4. Migrate the Database Schema
 Push the schema to your Postgres instance. This sets up the message logs, scheduling tables, and the `384`-dimension pgvector memory schema:
@@ -109,6 +118,7 @@ Open [http://localhost:3000](http://localhost:3000) to complete the onboarding a
 
 * **Zero Local System Execution:** Any code execution or complex scripting performed by tools runs inside Composio's remote workbench sandboxes, keeping your host machine safe from prompt injection attacks.
 * **OAuth Credentials Protection:** The agent executes transactions through OAuth flows managed by Composio. No direct service keys (e.g., Google OAuth keys, GitHub personal tokens) are visible to the agent's code context.
+* **PII Encryption & Redaction:** TrustClaw intercepts outbound requests to external models and replaces personal information (like `john@example.com`) with abstract tokens (like `[EMAIL_1]`). The model only ever sees the token, and TrustClaw maps it back to the original text before rendering the output in the UI. Local models bypass this layer for enhanced efficiency.
 
 ---
 
