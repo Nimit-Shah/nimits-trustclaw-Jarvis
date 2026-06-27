@@ -130,13 +130,8 @@ export const createInstance = protectedProcedure
   .mutation(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
-    const existing = await db.composioClawInstance.findUnique({
-      where: { userId },
-      select: INSTANCE_SELECT,
-    });
-    if (existing) {
-      return existing;
-    }
+    // We no longer check for an existing instance, as we support multiple chats.
+    // Every call to createInstance will spawn a new chat session.
 
     const onboardingState = await db.onboardingState.findUnique({
       where: { userId },

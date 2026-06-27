@@ -7,8 +7,10 @@ export const getHistory = protectedProcedure
   .query(async ({ input, ctx }) => {
     const userId = ctx.session.user.id;
 
-    const instance = await db.composioClawInstance.findUnique({
-      where: { userId },
+    const chatId = input.chatId;
+    const instance = await db.composioClawInstance.findFirst({
+      where: chatId ? { id: chatId, userId } : { userId },
+      orderBy: { updatedAt: "desc" },
       select: { id: true },
     });
 

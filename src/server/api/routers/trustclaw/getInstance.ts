@@ -1,17 +1,23 @@
 import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
 import { isTelegramConfigured } from "~/server/clients/telegram";
+import { getInstanceInput } from "./getInstance.schema";
 
-export const getInstance = protectedProcedure.query(async ({ ctx }) => {
+export const getInstance = protectedProcedure
+  .input(getInstanceInput)
+  .query(async ({ ctx, input }) => {
   const userId = ctx.session.user.id;
+  const chatId = input?.chatId;
 
   const [instance, onboardingState, user] = await db.$transaction([
-    db.composioClawInstance.findUnique({
-      where: { userId },
+    db.composioClawInstance.findFirst({
+      where: chatId ? { id: chatId, userId } : { userId },
+      orderBy: { updatedAt: "desc" },
       select: {
         id: true,
         userId: true,
         anthropicModel: true,
+        piiRedactionEnabled: true,
         telegramChatId: true,
         telegramLinkToken: true,
         telegramLinkTokenExpiresAt: true,

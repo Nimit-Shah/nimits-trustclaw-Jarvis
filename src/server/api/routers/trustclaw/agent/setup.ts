@@ -4,6 +4,8 @@ import { db } from "~/server/clients/db";
 import { createComposioClient } from "~/server/clients/composio";
 import { buildSystemPrompt } from "./system-prompt";
 import { ollamaProvider } from "~/server/clients/ollama";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { env } from "~/env";
 import {
   createCustomTools,
   searchMemoriesForContext,
@@ -26,17 +28,22 @@ import {
 import { stripToolResultEchoes } from "./strip-tool-echoes";
 import { clearStreamingMessage } from "~/server/clients/redis";
 import type { ReconstructedMessage } from "./types";
+import { getModelProvider, isAnthropicModel, resolveModelId } from "./model-utils";
+import { optimizeToolSchemas } from "./tool-optimizer";
+import { PIIVault } from "./pii";
 
 type MessageSource = "web" | "telegram" | "cron";
 
 /**
- * Wraps every tool's execute function to sanitize its return value,
- * replacing lone Unicode surrogates with U+FFFD. Composio tool results
- * (e.g. scraped web pages, email bodies) can contain malformed Unicode
- * that produces invalid JSON when the AI SDK serializes the request
- * body for the Anthropic API.
+ * Wraps every tool's execute function to:
+ * 1. Sanitize return values (replace lone Unicode surrogates with U+FFFD).
+ * 2. Optionally redact PII in tool results when a PIIVault is active.
+ *
+ * Composio tool results (e.g. scraped web pages, email bodies) can contain
+ * malformed Unicode that produces invalid JSON, and PII that should not
+ * reach external LLMs.
  */
-function sanitizeToolResults(tools: ToolSet): ToolSet {
+function wrapToolExecutors(tools: ToolSet, vault: PIIVault | null): ToolSet {
   const wrapped: ToolSet = {};
   for (const [name, tool] of Object.entries(tools)) {
     if (tool.execute) {
@@ -46,8 +53,19 @@ function sanitizeToolResults(tools: ToolSet): ToolSet {
         execute: async (...args: Parameters<typeof originalExecute>) => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- tool execute returns unknown/any; deepSanitize preserves the shape
           const result = await originalExecute(...args);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- deepSanitize accepts unknown
+          const sanitized = deepSanitize(result);
+
+          // If a PII vault is active, extract structured PII from known
+          // fields (names, emails in JSON) then redact all string values.
+          if (vault) {
+            vault.registerStructuredPII(sanitized);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return vault.redactToolResult(sanitized);
+          }
+
           // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return deepSanitize(result);
+          return sanitized;
         },
       };
     } else {
@@ -55,6 +73,52 @@ function sanitizeToolResults(tools: ToolSet): ToolSet {
     }
   }
   return wrapped;
+}
+
+/**
+ * Redacts a list of reconstructed messages before they are sent to the LLM.
+ * Returns a new deep-cloned array with text contents redacted.
+ */
+function redactContextMessages(
+  messages: ReconstructedMessage[],
+  vault: PIIVault,
+): ReconstructedMessage[] {
+  return messages.map((msg) => {
+    if (msg.role === "user") {
+      return { ...msg, content: vault.redact(msg.content) };
+    }
+    if (msg.role === "assistant") {
+      if (typeof msg.content === "string") {
+        return { ...msg, content: vault.redact(msg.content) };
+      }
+      return {
+        ...msg,
+        content: msg.content.map((part) => {
+          if (part.type === "text") {
+            return { ...part, text: vault.redact(part.text) };
+          }
+          if (part.type === "tool-call") {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            return { ...part, input: vault.redactToolResult(part.input) as Record<string, unknown> };
+          }
+          return part;
+        }),
+      };
+    }
+    if (msg.role === "tool") {
+      return {
+        ...msg,
+        content: msg.content.map((part) => {
+          if (part.type === "tool-result") {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            return { ...part, output: vault.redactToolResult(part.output) as any };
+          }
+          return part;
+        }),
+      };
+    }
+    return msg;
+  });
 }
 
 interface PrepareAgentRunParams {
@@ -67,6 +131,8 @@ interface PrepareAgentRunParams {
 interface PrepareAgentRunResult {
   agent: ToolLoopAgent;
   messages: ReconstructedMessage[];
+  /** PII vault for this request. Null if redaction is disabled (local model). */
+  piiVault: PIIVault | null;
 }
 
 type PrepareResult = { status: "ready"; result: PrepareAgentRunResult };
@@ -91,7 +157,15 @@ export async function prepareAgentRun(
 
   const userTimezone = user?.timezone ?? "UTC";
 
-  const isOllama = instance.anthropicModel === "qwen3:8b";
+  const provider = getModelProvider(instance.anthropicModel);
+  const isOllama = provider === "ollama";
+  const useAnthropicOptions = isAnthropicModel(instance.anthropicModel);
+
+  // Create a PII vault for non-local models to redact sensitive data
+  // before it reaches the external LLM. Local Ollama models are exempt
+  // since data stays on-device. Users can disable via Settings.
+  const piiVault =
+    !isOllama && instance.piiRedactionEnabled ? new PIIVault() : null;
 
   const relevantMemories = await searchMemoriesForContext(instanceId, userMessage);
 
@@ -121,8 +195,11 @@ export async function prepareAgentRun(
   const { messages: prunedMessages } = pruneContext(aiMessages, contextWindow);
 
   // Add cache breakpoint to last history message (before new user message)
-  // so the conversation prefix is cached across turns
-  if (!isOllama && prunedMessages.length >= 2) {
+  // so the conversation prefix is cached across turns.
+  // Only apply Anthropic-specific cacheControl for Anthropic models —
+  // non-Anthropic Vercel Gateway models (OpenAI, DeepSeek, Google) don't
+  // understand this option and may reject the request.
+  if (useAnthropicOptions && prunedMessages.length >= 2) {
     const lastHistoryIndex = prunedMessages.length - 2;
     const msg = prunedMessages[lastHistoryIndex]!;
     prunedMessages[lastHistoryIndex] = {
@@ -149,14 +226,20 @@ export async function prepareAgentRun(
       waitForConnections: true,
     },
   });
-  const composioTools = await session.tools();
+  const rawComposioTools = await session.tools();
+  // Trim verbose Composio tool schemas to reduce token usage by ~40-60%.
+  // This prevents free-tier TPM rate-limit errors with smaller models.
+  const composioTools = optimizeToolSchemas(rawComposioTools);
 
   const customTools = createCustomTools(instanceId, userTimezone);
 
-  const allTools: ToolSet = sanitizeToolResults({
-    ...composioTools,
-    ...customTools,
-  });
+  // Wrap tool executors with sanitization + optional PII redaction.
+  // When a vault is active, tool results are scanned for PII and
+  // sensitive values are replaced with tokens before the LLM sees them.
+  const allTools: ToolSet = wrapToolExecutors(
+    { ...composioTools, ...customTools },
+    piiVault,
+  );
 
   // Pre-create assistant message row so we can update it in onFinish
   const assistantMessageRow = await db.message.create({
@@ -177,25 +260,27 @@ export async function prepareAgentRun(
         keep_alive: -1,
         options: { num_ctx: getContextWindow("qwen3:8b") },
       })
-    : (instance.anthropicModel.startsWith("anthropic/")
-        ? instance.anthropicModel
-        : `anthropic/${instance.anthropicModel}`);
+    : provider === "openrouter"
+      ? createOpenRouter({ apiKey: env.OPENROUTER_API_KEY })(resolveModelId(instance.anthropicModel))
+      : resolveModelId(instance.anthropicModel);
 
   const agent = new ToolLoopAgent({
     model,
     instructions: {
       role: "system",
       content: systemPrompt,
-      ...(!isOllama && {
+      // Only inject Anthropic cacheControl for Anthropic models.
+      // Other Vercel Gateway providers don't support this option.
+      ...(useAnthropicOptions && {
         providerOptions: {
           anthropic: { cacheControl: { type: "ephemeral" } },
         },
       }),
     } satisfies SystemModelMessage,
     tools: allTools,
-    // Step limit is kept at 100 to allow complex agentic workflows,
-    // but the optimized model setup prevents runaways on simple turns.
-    stopWhen: stepCountIs(100),
+    // Step limit is set to 20 to prevent infinite runaway loops,
+    // while still providing ample steps for complex agentic tool actions.
+    stopWhen: stepCountIs(20),
     // Disable Qwen3 thinking mode to prevent empty-output errors
     // and cut token generation time in half.
     // maxTokens: 512 caps conversational replies; tool-call responses are
@@ -238,7 +323,12 @@ export async function prepareAgentRun(
 
           const stepText = stripToolResultEchoes(step.text);
           if (stepText) {
-            assistantParts.push({ type: "text" as const, text: stepText });
+            // Restore PII tokens back to original values before persisting.
+            // The database stores real data; only the LLM saw redacted tokens.
+            const restoredText = piiVault
+              ? piiVault.restore(stepText)
+              : stepText;
+            assistantParts.push({ type: "text" as const, text: restoredText });
           }
         }
 
@@ -278,7 +368,7 @@ export async function prepareAgentRun(
           },
           contextTokens: totalContextTokens,
           settings,
-          prunedMessages,
+          prunedMessages, // Pass original UNREDACTED messages for accurate memory/compaction
         });
       } catch (error) {
         console.error("[agent/onFinish] post-stream processing failed:", error);
@@ -293,11 +383,18 @@ export async function prepareAgentRun(
     },
   });
 
+  // Create a deep-cloned array with redacted text for the LLM prompt.
+  // We keep the original `prunedMessages` above for runPostResponseTasks.
+  const redactedMessages = piiVault
+    ? redactContextMessages(prunedMessages, piiVault)
+    : prunedMessages;
+
   return {
     status: "ready",
     result: {
       agent,
-      messages: prunedMessages,
+      messages: redactedMessages,
+      piiVault,
     },
   };
 }

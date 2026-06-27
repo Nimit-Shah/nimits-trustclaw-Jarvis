@@ -48,6 +48,9 @@ export const env = createEnv({
 
     // Ollama (local)
     OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
+
+    // OpenRouter (optional)
+    OPENROUTER_API_KEY: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
@@ -75,6 +78,7 @@ export const env = createEnv({
     RATE_LIMIT_ENABLED: process.env.RATE_LIMIT_ENABLED,
     CRON_SECRET: process.env.CRON_SECRET,
     OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 
     // Client URL resolution:
     //  - dev: derive from PORT so `PORT=3001 pnpm dev` just works

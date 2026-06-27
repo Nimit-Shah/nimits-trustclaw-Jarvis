@@ -7,7 +7,7 @@ export const ALLOWED_ANTHROPIC_MODELS = [
   "qwen3:8b",
 ] as const;
 
-export const allowedAnthropicModelSchema = z.enum(ALLOWED_ANTHROPIC_MODELS);
+export const allowedAnthropicModelSchema = z.string();
 
 export const createInstanceInput = z.object({
   anthropicModel: allowedAnthropicModelSchema.default(

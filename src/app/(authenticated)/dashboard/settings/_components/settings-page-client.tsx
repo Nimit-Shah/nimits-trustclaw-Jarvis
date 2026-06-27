@@ -54,7 +54,10 @@ export function SettingsPageClient() {
       </div>
 
       <ErrorBoundary>
-        <ModelSettings currentModel={instance.anthropicModel} />
+        <ModelSettings
+          currentModel={instance.anthropicModel}
+          piiRedactionEnabled={instance.piiRedactionEnabled}
+        />
       </ErrorBoundary>
 
       {data?.telegramConfigured && (

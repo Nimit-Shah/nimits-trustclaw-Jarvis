@@ -102,6 +102,11 @@ model ComposioClawInstance {
   // Anthropic config
   anthropicModel String @default("qwen3:8b")
 
+  // PII redaction — enabled by default for all non-local models.
+  // When true, user data from Composio tool results is tokenised before
+  // being sent to external LLMs and restored in the response.
+  piiRedactionEnabled Boolean @default(true)
+
   // Telegram linking
   telegramChatId             String?   @unique
   telegramLinkToken          String?   @unique

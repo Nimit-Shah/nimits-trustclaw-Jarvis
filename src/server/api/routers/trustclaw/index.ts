@@ -15,6 +15,8 @@ import { getMemories } from "./getMemories";
 import { getIntegrationAuthLinks } from "./getIntegrationAuthLinks";
 import { saveOnboardingState } from "./saveOnboardingState";
 import { checkConnectionStatus } from "./checkConnectionStatus";
+import { getVercelModels } from "./getVercelModels";
+import { getOpenRouterModels } from "./getOpenRouterModels";
 
 export const trustclawRouter = router({
   getInstance,
@@ -33,4 +35,7 @@ export const trustclawRouter = router({
   getIntegrationAuthLinks,
   saveOnboardingState,
   checkConnectionStatus,
+  getVercelModels,
+  getOpenRouterModels,
 });
+

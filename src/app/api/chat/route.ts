@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "~/server/auth";
 import { db } from "~/server/clients/db";
 import { prepareAgentRun } from "~/server/api/routers/trustclaw/agent/setup";
+import type { PIIVault } from "~/server/api/routers/trustclaw/agent/pii";
 import {
   setStreamingMessage,
   getStreamingMessage,
@@ -38,6 +39,36 @@ async function getAuthenticatedInstance(request: Request) {
   }
 
   return { userId, instanceId: instance.id };
+}
+
+/**
+ * Creates a TransformStream that intercepts outbound SSE chunks and
+ * restores PII tokens (e.g. `[EMAIL_1]`) back to original values
+ * using the provided vault.
+ *
+ * Works on raw Uint8Array chunks — decodes to text, applies restoration,
+ * then re-encodes. This is safe because SSE is UTF-8 text.
+ */
+function createPIIRestoreTransform(
+  vault: PIIVault,
+): TransformStream<Uint8Array, Uint8Array> {
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+
+  return new TransformStream({
+    transform(chunk, controller) {
+      const text = decoder.decode(chunk, { stream: true });
+      const restored = vault.restore(text);
+      controller.enqueue(encoder.encode(restored));
+    },
+    flush(controller) {
+      // Flush any remaining decoder state
+      const remaining = decoder.decode();
+      if (remaining) {
+        controller.enqueue(encoder.encode(vault.restore(remaining)));
+      }
+    },
+  });
 }
 
 export const maxDuration = 60;
@@ -92,7 +123,7 @@ export async function POST(request: Request) {
     source: "web",
   });
 
-  const { agent, messages } = prepareResult.result;
+  const { agent, messages, piiVault } = prepareResult.result;
 
   const streamId = crypto.randomUUID();
   await setStreamingMessage(instanceId, streamId);
@@ -106,7 +137,7 @@ export async function POST(request: Request) {
   });
 
   const streamContext = getStreamContext();
-  return result.toUIMessageStreamResponse({
+  const response = result.toUIMessageStreamResponse({
     headers: {
       "X-Stream-Id": streamId,
     },
@@ -121,6 +152,23 @@ export async function POST(request: Request) {
         }
       : {}),
   });
+
+  // When PII redaction is active, wrap the response body with a
+  // transform that restores PII tokens back to original values.
+  // The SSE stream contains text like "[EMAIL_1] sent you a message"
+  // which we rewrite to "john@example.com sent you a message".
+  if (piiVault?.hasRedactions && response.body) {
+    const restored = response.body.pipeThrough(
+      createPIIRestoreTransform(piiVault),
+    );
+    return new Response(restored, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  }
+
+  return response;
 }
 
 export async function GET(request: Request) {

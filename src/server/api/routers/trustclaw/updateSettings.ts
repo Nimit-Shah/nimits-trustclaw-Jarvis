@@ -24,10 +24,14 @@ export const updateSettings = protectedProcedure
         where: { userId },
         data: {
           ...(input.anthropicModel && { anthropicModel: input.anthropicModel }),
+          ...(input.piiRedactionEnabled !== undefined && {
+            piiRedactionEnabled: input.piiRedactionEnabled,
+          }),
         },
         select: {
           id: true,
           anthropicModel: true,
+          piiRedactionEnabled: true,
           updatedAt: true,
         },
       }),

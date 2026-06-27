@@ -18,7 +18,7 @@ export const linkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
   const userId = ctx.session.user.id;
 
   return db.$transaction(async (tx) => {
-    const instance = await tx.composioClawInstance.findUnique({
+    const instance = await tx.composioClawInstance.findFirst({
       where: { userId },
       select: {
         id: true,

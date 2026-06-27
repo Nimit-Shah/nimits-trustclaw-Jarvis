@@ -6,7 +6,7 @@ export const getStatus = protectedProcedure.query(async ({ ctx }) => {
   const userId = ctx.session.user.id;
 
   const instance = await db.composioClawInstance.findUnique({
-    where: { userId },
+        where: { userId },
     select: { id: true },
   });
 

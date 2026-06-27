@@ -7,7 +7,7 @@ export const getCronJobs = protectedProcedure
   .query(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
-    const instance = await db.composioClawInstance.findUnique({
+    const instance = await db.composioClawInstance.findFirst({
       where: { userId },
       select: { id: true },
     });

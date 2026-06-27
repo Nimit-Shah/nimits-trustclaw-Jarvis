@@ -4,6 +4,8 @@ import { db } from "~/server/clients/db";
 import { createCustomTools } from "../tools";
 import { serializeMessages } from "./prompts";
 import type { ReconstructedMessage } from "../types";
+import { getModelProvider, resolveModelId } from "../model-utils";
+import { PIIVault } from "../pii";
 
 const FLUSH_SYSTEM_PROMPT =
   "Pre-compaction memory flush turn. " +
@@ -51,12 +53,11 @@ export async function runMemoryFlush(
       return { memoriesSaved: 0 };
     }
 
-    const isOllama = anthropicModel === "qwen3:8b";
+    const provider = getModelProvider(anthropicModel);
+    const isOllama = provider === "ollama";
     const model = isOllama
       ? ollamaProvider("qwen3:8b")
-      : (anthropicModel.startsWith("anthropic/")
-          ? anthropicModel
-          : `anthropic/${anthropicModel}`);
+      : resolveModelId(anthropicModel);
 
     const allCustomTools = createCustomTools(instanceId);
     const memoryTools = {
@@ -65,7 +66,13 @@ export async function runMemoryFlush(
     };
 
     const contextSummary = serializeMessages(messages);
-    const flushPrompt = `Here is the recent conversation context:\n\n${contextSummary}\n\n${FLUSH_USER_PROMPT}`;
+
+    // Redact PII before sending to external LLMs.
+    // Local Ollama models are exempt since data stays on-device.
+    const vault = !isOllama ? new PIIVault() : null;
+    const safeContext = vault ? vault.redact(contextSummary) : contextSummary;
+
+    const flushPrompt = `Here is the recent conversation context:\n\n${safeContext}\n\n${FLUSH_USER_PROMPT}`;
 
     const result = await generateText({
       model,

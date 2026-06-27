@@ -16,8 +16,9 @@ const ianaTimezone = z
   );
 
 export const updateSettingsInput = z.object({
-  anthropicModel: z.enum(ALLOWED_ANTHROPIC_MODELS).optional(),
+  anthropicModel: z.string().optional(),
   timezone: ianaTimezone.optional(),
+  piiRedactionEnabled: z.boolean().optional(),
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsInput>;

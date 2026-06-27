@@ -15,6 +15,8 @@ import {
   buildToolFailuresSuffix,
 } from "./prompts";
 import { sanitizeString } from "../context/build-context";
+import { getModelProvider, resolveModelId } from "../model-utils";
+import { PIIVault } from "../pii";
 
 interface CompactionParams {
   instanceId: string;
@@ -70,21 +72,28 @@ async function summarize(
   conversationText: string,
   previousSummary: string | null,
 ): Promise<string> {
-  const isOllama = anthropicModel === "qwen3:8b";
-  const model = isOllama
+  const provider = getModelProvider(anthropicModel);
+  const model = provider === "ollama"
     ? ollamaProvider("qwen3:8b")
-    : (anthropicModel.startsWith("anthropic/")
-        ? anthropicModel
-        : `anthropic/${anthropicModel}`);
+    : resolveModelId(anthropicModel);
+
+  // Redact PII before sending to external LLMs.
+  // Local Ollama models are exempt since data stays on-device.
+  const vault = provider !== "ollama" ? new PIIVault() : null;
 
   const safeConversation = sanitizeString(conversationText);
   const safePreviousSummary = previousSummary ? sanitizeString(previousSummary) : null;
 
+  const redactedConversation = vault ? vault.redact(safeConversation) : safeConversation;
+  const redactedPreviousSummary = vault && safePreviousSummary
+    ? vault.redact(safePreviousSummary)
+    : safePreviousSummary;
+
   let prompt: string;
-  if (safePreviousSummary) {
-    prompt = `<conversation>\n${safeConversation}\n</conversation>\n\n<previous-summary>\n${safePreviousSummary}\n</previous-summary>\n\n${UPDATE_SUMMARIZATION_PROMPT}`;
+  if (redactedPreviousSummary) {
+    prompt = `<conversation>\n${redactedConversation}\n</conversation>\n\n<previous-summary>\n${redactedPreviousSummary}\n</previous-summary>\n\n${UPDATE_SUMMARIZATION_PROMPT}`;
   } else {
-    prompt = `<conversation>\n${safeConversation}\n</conversation>\n\n${INITIAL_SUMMARIZATION_PROMPT}`;
+    prompt = `<conversation>\n${redactedConversation}\n</conversation>\n\n${INITIAL_SUMMARIZATION_PROMPT}`;
   }
 
   const result = await generateText({
@@ -94,7 +103,8 @@ async function summarize(
     maxOutputTokens: 4_000,
   });
 
-  return result.text;
+  // Restore PII in the summary before persisting to the database
+  return vault ? vault.restore(result.text) : result.text;
 }
 
 async function stagedSummarize(
@@ -121,12 +131,10 @@ async function stagedSummarize(
     firstSummary,
   );
 
-  const isOllama = anthropicModel === "qwen3:8b";
-  const mergeModel = isOllama
+  const mergeProvider = getModelProvider(anthropicModel);
+  const mergeModel = mergeProvider === "ollama"
     ? ollamaProvider("qwen3:8b")
-    : (anthropicModel.startsWith("anthropic/")
-        ? anthropicModel
-        : `anthropic/${anthropicModel}`);
+    : resolveModelId(anthropicModel);
   const mergeResult = await generateText({
     model: mergeModel,
     system: COMPACTION_SYSTEM_PROMPT,
