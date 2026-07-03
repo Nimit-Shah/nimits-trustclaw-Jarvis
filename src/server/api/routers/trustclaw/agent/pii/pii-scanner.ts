@@ -228,20 +228,28 @@ const PII_FIELD_PATHS: Array<{
  * This catches person names, emails, and phone numbers that are embedded
  * in JSON objects with predictable schemas — without relying on NER or
  * external APIs.
+ *
+ * Uses two strategies:
+ * 1. **Exact path matching** — known JSON paths from specific APIs (Gmail, Slack, etc.)
+ * 2. **Key-name heuristic** — any field whose key name matches common PII fields
+ *    (e.g. `name`, `email`, `phone`) at any nesting depth. This catches PII from
+ *    the 500+ Composio integrations whose schemas we can't enumerate.
  */
 export function extractStructuredPII(obj: unknown): PIIMatch[] {
   if (!obj || typeof obj !== "object") return [];
 
   const matches: PIIMatch[] = [];
+  const seen = new Set<string>(); // Deduplicate by value
 
+  // Strategy 1: Exact path matching
   for (const fieldPath of PII_FIELD_PATHS) {
     const values = extractValuesAtPath(obj, fieldPath.path, 0);
     for (const value of values) {
       if (typeof value === "string" && value.trim().length > 1) {
         const trimmed = value.trim();
-        // Skip very short strings (single letters, empty strings)
-        // and obvious non-PII values
         if (trimmed.length <= 1 || isObviousNonPII(trimmed)) continue;
+        if (seen.has(trimmed)) continue;
+        seen.add(trimmed);
 
         matches.push({
           type: fieldPath.type,
@@ -250,6 +258,98 @@ export function extractStructuredPII(obj: unknown): PIIMatch[] {
           end: 0,
         });
       }
+    }
+  }
+
+  // Strategy 2: Deep-walk key-name heuristic
+  // Catches PII in any JSON field at any depth whose key name suggests PII content.
+  const heuristicMatches = deepWalkPIIByKeyName(obj);
+  for (const match of heuristicMatches) {
+    if (!seen.has(match.value)) {
+      seen.add(match.value);
+      matches.push(match);
+    }
+  }
+
+  return matches;
+}
+
+/**
+ * JSON key names that strongly indicate PII content.
+ * Maps key names → PII type. Matching is case-insensitive.
+ */
+const PII_KEY_HEURISTICS: Record<string, PIIType> = {
+  // Person names
+  name: "person_name",
+  displayname: "person_name",
+  display_name: "person_name",
+  fullname: "person_name",
+  full_name: "person_name",
+  givenname: "person_name",
+  given_name: "person_name",
+  firstname: "person_name",
+  first_name: "person_name",
+  lastname: "person_name",
+  last_name: "person_name",
+  surname: "person_name",
+  real_name: "person_name",
+  author_name: "person_name",
+  sender_name: "person_name",
+  recipient_name: "person_name",
+  // Emails
+  email: "email",
+  emailaddress: "email",
+  email_address: "email",
+  sender_email: "email",
+  recipient_email: "email",
+  // Phones
+  phone: "phone",
+  phonenumber: "phone",
+  phone_number: "phone",
+  mobilephone: "phone",
+  mobile_phone: "phone",
+  mobile: "phone",
+};
+
+/**
+ * Recursively walks an object tree and extracts string values from fields
+ * whose key names match known PII indicators. Works at any depth.
+ */
+function deepWalkPIIByKeyName(
+  obj: unknown,
+  depth = 0,
+): PIIMatch[] {
+  if (depth > 10) return []; // Safety: prevent infinite recursion
+  if (!obj || typeof obj !== "object") return [];
+
+  const matches: PIIMatch[] = [];
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      matches.push(...deepWalkPIIByKeyName(item, depth + 1));
+    }
+    return matches;
+  }
+
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    const normalizedKey = key.toLowerCase();
+    const piiType = PII_KEY_HEURISTICS[normalizedKey];
+
+    if (piiType && typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.length > 1 && !isObviousNonPII(trimmed)) {
+        matches.push({
+          type: piiType,
+          value: trimmed,
+          start: 0,
+          end: 0,
+        });
+      }
+    }
+
+    // Recurse into nested objects/arrays regardless of key match
+    if (typeof value === "object" && value !== null) {
+      matches.push(...deepWalkPIIByKeyName(value, depth + 1));
     }
   }
 

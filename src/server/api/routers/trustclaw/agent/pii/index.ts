@@ -15,6 +15,7 @@
  */
 
 export { PIIVault } from "./pii-tokenizer";
+export { PIITransportShield } from "./pii-transport-shield";
 export { scanForPII, extractStructuredPII } from "./pii-scanner";
 export type {
   PIIType,

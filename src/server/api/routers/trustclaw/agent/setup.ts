@@ -30,7 +30,7 @@ import { clearStreamingMessage } from "~/server/clients/redis";
 import type { ReconstructedMessage } from "./types";
 import { getModelProvider, isAnthropicModel, resolveModelId } from "./model-utils";
 import { optimizeToolSchemas } from "./tool-optimizer";
-import { PIIVault } from "./pii";
+import { PIIVault, PIITransportShield } from "./pii";
 
 type MessageSource = "web" | "telegram" | "cron";
 
@@ -167,6 +167,11 @@ export async function prepareAgentRun(
   const piiVault =
     !isOllama && instance.piiRedactionEnabled ? new PIIVault() : null;
 
+  // The transport shield is the final network-layer checkpoint.
+  // It shares the same vault so tokens are consistent across all layers
+  // (tool results, context messages, system prompt, user message).
+  const transportShield = piiVault ? new PIITransportShield(piiVault) : null;
+
   const relevantMemories = await searchMemoriesForContext(instanceId, userMessage);
 
   const systemPrompt = sanitizeString(
@@ -176,6 +181,7 @@ export async function prepareAgentRun(
       userPrompt: instance.userPrompt,
       hasCompactionSummary: !!instance.lastCompactionSummary,
       isOllama,
+      piiEnabled: !!piiVault,
     }),
   );
 
@@ -264,11 +270,18 @@ export async function prepareAgentRun(
       ? createOpenRouter({ apiKey: env.OPENROUTER_API_KEY })(resolveModelId(instance.anthropicModel))
       : resolveModelId(instance.anthropicModel);
 
+  // Final transport-layer scrub: the system prompt itself may contain
+  // PII from the user's identity/soul/user prompts. Scrub it before
+  // it's baked into the agent's instructions.
+  const safeSystemPrompt = transportShield
+    ? transportShield.scrubText(systemPrompt)
+    : systemPrompt;
+
   const agent = new ToolLoopAgent({
     model,
     instructions: {
       role: "system",
-      content: systemPrompt,
+      content: safeSystemPrompt,
       // Only inject Anthropic cacheControl for Anthropic models.
       // Other Vercel Gateway providers don't support this option.
       ...(useAnthropicOptions && {
@@ -385,9 +398,20 @@ export async function prepareAgentRun(
 
   // Create a deep-cloned array with redacted text for the LLM prompt.
   // We keep the original `prunedMessages` above for runPostResponseTasks.
-  const redactedMessages = piiVault
+  let redactedMessages = piiVault
     ? redactContextMessages(prunedMessages, piiVault)
     : prunedMessages;
+
+  // ── Final transport-layer checkpoint ──
+  // After all per-layer redaction, run one final deep-scrub on the
+  // fully-assembled message array. This catches any PII that leaked
+  // through tool results, reasoning text, or partial redaction gaps.
+  // The shield shares the same PIIVault, so tokens stay consistent.
+  if (transportShield) {
+    redactedMessages = transportShield.scrubPayload(
+      redactedMessages as any,
+    ) as typeof redactedMessages;
+  }
 
   return {
     status: "ready",

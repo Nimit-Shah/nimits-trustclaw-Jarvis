@@ -118,7 +118,12 @@ Open [http://localhost:3000](http://localhost:3000) to complete the onboarding a
 
 * **Zero Local System Execution:** Any code execution or complex scripting performed by tools runs inside Composio's remote workbench sandboxes, keeping your host machine safe from prompt injection attacks.
 * **OAuth Credentials Protection:** The agent executes transactions through OAuth flows managed by Composio. No direct service keys (e.g., Google OAuth keys, GitHub personal tokens) are visible to the agent's code context.
-* **PII Encryption & Redaction:** TrustClaw intercepts outbound requests to external models and replaces personal information (like `john@example.com`) with abstract tokens (like `[EMAIL_1]`). The model only ever sees the token, and TrustClaw maps it back to the original text before rendering the output in the UI. Local models bypass this layer for enhanced efficiency.
+* **PII Encryption & Redaction (Defense-in-Depth):** TrustClaw deploys a multi-layered anonymization process to protect your data before it leaves your network:
+  1. **Tool-Output Redaction:** Incoming results from 500+ third-party tools are intercepted and scrubbed.
+  2. **Deep-Walk Scanner Heuristic:** Scans raw JSON key names (like `name`, `email`, `phone`) at any nesting depth to catch PII in arbitrary tool schemas.
+  3. **Context Message Redaction:** Historical dialogue turns are fully redacted using session-isolated, deterministic placeholders.
+  4. **Transport-Layer Shield (Final Checkpoint):** Sits as a network-level bottleneck right before serialization, deep-scrubbing the entire compiled payload (including instructions, system prompts, and history) to catch any edge-case leaks.
+  5. **SSE Response Reconstruction:** An intercepting transform stream maps these tokens back to your original data on the way to the frontend, ensuring you see clean, unredacted outputs while keeping external LLMs completely blind to your sensitive data. Local models bypass this for speed.
 
 ---
 

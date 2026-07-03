@@ -9,6 +9,8 @@ interface SystemPromptParams {
   userTimezone?: string;
   /** When true, use a compact tool description to save tokens for local LLM */
   isOllama?: boolean;
+  /** When true, PII redaction is active and the protocol section is injected */
+  piiEnabled?: boolean;
 }
 
 const DEFAULT_SOUL_PROMPT = `## Who You Are
@@ -188,6 +190,16 @@ const MESSAGING_GUIDELINES = `## Messaging Style
 - NEVER echo raw tool results, JSON, or HTML back to the user. Tool results are displayed separately in the UI. Instead, summarize what you found in natural language.
 - NEVER share internal IDs (cron job IDs, etc.) with the user - they're implementation details. Describe things by their content or purpose instead.`;
 
+const PII_ANONYMIZATION_PROTOCOL = `## PII & Anonymization Layer Protocol
+
+To preserve data privacy, all incoming contextual elements, tool data (such as emails, notifications, and logs), and inputs have been processed through the TrustClaw Anonymization Layer.
+
+1. Identifiers are replaced by explicit tokens: \`[EMAIL_1]\`, \`[PHONE_2]\`, \`[PERSON_NAME_3]\`, \`[API_KEY_1]\`, \`[SSN_1]\`, \`[CREDIT_CARD_1]\`, \`[IP_ADDRESS_1]\`, \`[ADDRESS_1]\`, etc.
+2. Treat these tokens as valid literal inputs. Never attempt to guess, expand, or assume the underlying raw values behind these tokens.
+3. If an action requires parsing user configuration fields (such as calendar events, or reading inbox parameters), reference the placeholders precisely as they exist in the text context.
+4. When replying to the user, maintain the use of placeholders exactly as passed; do not generate or hallucinate mock data fields to fill them out.
+5. When calling tools that need specific values (email addresses, phone numbers, names), use the exact token as provided — the system will automatically restore the real value before the tool executes.`;
+
 export function buildSystemPrompt(params: SystemPromptParams): string {
   const sections: string[] = [];
 
@@ -217,6 +229,13 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
   sections.push(CUSTOM_TOOLS_DESCRIPTION);
   sections.push(SCHEDULED_TASK_NOTE);
   sections.push(MESSAGING_GUIDELINES);
+
+  // Only inject PII protocol when redaction is active (non-local models).
+  // This tells the model how to correctly interpret and pass through
+  // anonymized tokens without trying to guess the underlying values.
+  if (params.piiEnabled) {
+    sections.push(PII_ANONYMIZATION_PROTOCOL);
+  }
 
   if (params.hasCompactionSummary) {
     sections.push(SESSION_CONTINUITY_NOTE);
