@@ -14,7 +14,8 @@ import { AssistantMessage } from "./assistant-message/assistant-message";
 import { ThinkingIndicator } from "./assistant-message/thinking-indicator";
 import { ChatInput } from "./chat-input";
 import { TerminalPane } from "../terminal/terminal-pane";
-import { ComposioCta } from "./composio-cta";
+import { useJarvisVoice } from "./use-jarvis-voice";
+import { VoiceModeOverlay } from "./voice-mode-overlay";
 
 const SAMPLE_PROMPTS = [
   "Summarize my emails for today",
@@ -65,6 +66,23 @@ export function ChatView({
     prevFirstIdRef.current = currentFirstId;
   }
 
+  // ── handleSend — must be declared BEFORE useJarvisVoice ──
+  const handleSend = useCallback(
+    (text: string) => {
+      const result = sendMessage(text);
+      // Wait one frame for Virtuoso to render the new user message
+      requestAnimationFrame(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: "LAST",
+          align: "start",
+          behavior: "smooth",
+        });
+      });
+      return result;
+    },
+    [sendMessage],
+  );
+
   // Infinite scroll: prepend older messages when new history pages load
   const pageCountRef = useRef(historyPageCount);
   useEffect(() => {
@@ -91,22 +109,21 @@ export function ChatView({
   const lastMessage = messages[messages.length - 1];
   const isWaitingForAssistant = isStreaming && lastMessage?.role === "user";
 
-  // Scroll the user's message to the top of the viewport when they send it
-  const handleSend = useCallback(
-    (text: string) => {
-      const result = sendMessage(text);
-      // Wait one frame for Virtuoso to render the new user message
-      requestAnimationFrame(() => {
-        virtuosoRef.current?.scrollToIndex({
-          index: "LAST",
-          align: "start",
-          behavior: "smooth",
-        });
-      });
-      return result;
-    },
-    [sendMessage],
-  );
+  // Derive latest assistant text for TTS — UIMessage uses .parts, not .content
+  const lastAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
+  const latestAssistantText = lastAssistantMessage
+    ? lastAssistantMessage.parts
+        .filter((p) => p.type === "text")
+        .map((p) => (p as { type: "text"; text: string }).text)
+        .join("")
+    : undefined;
+
+  const jarvis = useJarvisVoice({
+    onSend: handleSend,
+    isAgentStreaming: isStreaming,
+    latestAssistantText,
+  });
+
 
   const handleScrollToBottom = useCallback(() => {
     virtuosoRef.current?.scrollToIndex({
@@ -119,7 +136,8 @@ export function ChatView({
   return (
     <div className="flex h-full overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col">
-        <ComposioCta />
+
+
         <div className="relative min-h-0 flex-1">
           {isEmpty ? (
             <div className="flex h-full flex-col items-center justify-center gap-4">
@@ -213,8 +231,28 @@ export function ChatView({
           )}
         </div>
 
-        <ChatInput onSend={handleSend} onStop={stop} status={status} />
+        <ChatInput
+          onSend={handleSend}
+          onStop={stop}
+          status={status}
+          voice={{
+            whisperAvailable: jarvis.whisperAvailable,
+            onOpenVoiceMode: jarvis.openVoiceMode,
+          }}
+        />
       </div>
+
+      {/* Jarvis Voice Mode Overlay */}
+      <VoiceModeOverlay
+        isOpen={jarvis.isVoiceModeOpen}
+        jarvisState={jarvis.jarvisState}
+        micPermission={jarvis.micPermission}
+        volume={jarvis.volume}
+        lastTranscription={jarvis.lastTranscription}
+        error={jarvis.voiceError}
+        onClose={jarvis.closeVoiceMode}
+        onRequestMicPermission={jarvis.requestMicPermission}
+      />
 
       {terminalOpen && (
         <div className="hidden w-[400px] shrink-0 border-l border-border md:block lg:w-[500px]">

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LogOut,
@@ -105,30 +104,6 @@ export function DashboardNavbar() {
             </TooltipContent>
           </Tooltip>
         )}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="https://discord.gg/composio"
-              target="_blank"
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
-              >
-                <Image
-                  src="/images/icons/discord.webp"
-                  alt="Discord"
-                  width={16}
-                  height={16}
-                  className="h-4 w-4 dark:invert"
-                />
-              </Button>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent>Discord</TooltipContent>
-        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>

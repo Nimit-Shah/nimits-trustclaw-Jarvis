@@ -1,0 +1,293 @@
+"use client";
+
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useVoiceInput } from "./use-voice-input";
+import { useMicPermission } from "./use-mic-permission";
+import type { MicPermissionState } from "./use-mic-permission";
+
+// ── State Machine ──────────────────────────────────────────────────────────────
+//
+//  IDLE → SPEAKING_GREETING → LISTENING → PROCESSING → SPEAKING_RESPONSE → IDLE
+//                                                               ↑
+//  (overlay stays open so user can ask follow-up questions)
+//
+
+export type JarvisVoiceState =
+  | "IDLE"
+  | "SPEAKING_GREETING"
+  | "LISTENING"
+  | "PROCESSING"
+  | "SPEAKING_RESPONSE";
+
+interface UseJarvisVoiceOptions {
+  onSend: (text: string) => void;
+  isAgentStreaming: boolean;
+  latestAssistantText?: string;
+}
+
+interface UseJarvisVoiceReturn {
+  isVoiceModeOpen: boolean;
+  jarvisState: JarvisVoiceState;
+  micPermission: MicPermissionState;
+  volume: number;
+  lastTranscription: string;
+  voiceError: string | null;
+  whisperAvailable: boolean;
+  openVoiceMode: () => void;
+  closeVoiceMode: () => void;
+  requestMicPermission: () => Promise<boolean>;
+}
+
+// ── macOS TTS via /api/tts ─────────────────────────────────────────────────────
+
+function createMacTTS() {
+  let currentAudio: HTMLAudioElement | null = null;
+  let currentUrl: string | null = null;
+
+  async function speak(text: string): Promise<void> {
+    stop(); // cancel any ongoing playback
+
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!res.ok) {
+      throw new Error("TTS generation failed");
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    currentUrl = url;
+
+    return new Promise<void>((resolve, reject) => {
+      const audio = new Audio(url);
+      currentAudio = audio;
+
+      audio.onended = () => {
+        cleanup();
+        resolve();
+      };
+      audio.onerror = () => {
+        cleanup();
+        reject(new Error("Audio playback failed"));
+      };
+
+      void audio.play().catch((err) => {
+        cleanup();
+        reject(err instanceof Error ? err : new Error("Audio play failed"));
+      });
+    });
+  }
+
+  function stop() {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.onended = null;
+      currentAudio.onerror = null;
+      currentAudio = null;
+    }
+    cleanup();
+  }
+
+  function cleanup() {
+    if (currentUrl) {
+      URL.revokeObjectURL(currentUrl);
+      currentUrl = null;
+    }
+  }
+
+  return { speak, stop };
+}
+
+// ── Main Hook ──────────────────────────────────────────────────────────────────
+
+const GREETING_TEXT = "What can I do for you?";
+
+export function useJarvisVoice({
+  onSend,
+  isAgentStreaming,
+  latestAssistantText,
+}: UseJarvisVoiceOptions): UseJarvisVoiceReturn {
+  const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
+  const [jarvisState, setJarvisState] = useState<JarvisVoiceState>("IDLE");
+  const [lastTranscription, setLastTranscription] = useState("");
+  const [whisperAvailable, setWhisperAvailable] = useState(false);
+
+  const { permissionState: micPermission, requestPermission: requestMicPermission } =
+    useMicPermission();
+
+  // Stable TTS instance
+  const ttsRef = useRef<ReturnType<typeof createMacTTS> | null>(null);
+  if (!ttsRef.current) ttsRef.current = createMacTTS();
+  const tts = ttsRef.current;
+
+  // Track whether the component is still mounted
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // ── Whisper server health check on mount ──
+  useEffect(() => {
+    void fetch("/api/whisper-status")
+      .then((r) => r.json())
+      .then((data: { available: boolean }) => setWhisperAvailable(data.available))
+      .catch(() => setWhisperAvailable(false));
+  }, []);
+
+  // ── Transcription callback → auto-send → wait for agent response ──
+  const handleTranscribed = useCallback(
+    (text: string) => {
+      if (!mountedRef.current) return;
+      setLastTranscription(text);
+      setJarvisState("PROCESSING");
+      // Auto-send after a brief flash so the user sees the transcription
+      setTimeout(() => {
+        onSend(text);
+      }, 300);
+    },
+    [onSend],
+  );
+
+  const { state: voiceInputState, volume, error: voiceError, startRecording, stopRecording } =
+    useVoiceInput({ onTranscribed: handleTranscribed });
+
+  // ── TTS: speak the agent's response sentence-by-sentence ──
+  const spokenUpToRef = useRef(0);
+  const ttsQueueRef = useRef<string[]>([]);
+  const isSpeakingLoopActiveRef = useRef(false);
+
+  const processQueue = useCallback(async () => {
+    if (isSpeakingLoopActiveRef.current) return;
+    isSpeakingLoopActiveRef.current = true;
+
+    while (ttsQueueRef.current.length > 0 && mountedRef.current) {
+      const sentence = ttsQueueRef.current.shift()!;
+      try {
+        await tts.speak(sentence);
+      } catch {
+        // TTS failed — skip this sentence, continue
+      }
+    }
+
+    isSpeakingLoopActiveRef.current = false;
+    // If we're still in SPEAKING_RESPONSE and queue is empty,
+    // and agent is no longer streaming, return to IDLE
+    if (mountedRef.current) {
+      setJarvisState((prev) => (prev === "SPEAKING_RESPONSE" ? "IDLE" : prev));
+    }
+  }, [tts]);
+
+  // Feed new assistant text to TTS as it streams
+  useEffect(() => {
+    if (!isVoiceModeOpen || !latestAssistantText || jarvisState === "IDLE") return;
+
+    const newText = latestAssistantText.slice(spokenUpToRef.current);
+    if (!newText) return;
+
+    // Split by sentence boundaries
+    const sentenceRegex = /[^.!?\n]+[.!?\n]+/g;
+    const sentences: string[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = sentenceRegex.exec(newText)) !== null) {
+      sentences.push(match[0].trim());
+    }
+
+    if (sentences.length > 0) {
+      spokenUpToRef.current += sentences.join("").length;
+      ttsQueueRef.current.push(...sentences);
+
+      setJarvisState("SPEAKING_RESPONSE");
+      void processQueue();
+    }
+  }, [latestAssistantText, isVoiceModeOpen, jarvisState, processQueue]);
+
+  // ── Voice Mode lifecycle ──
+
+  const runVoiceLoop = useCallback(async () => {
+    if (!mountedRef.current) return;
+
+    // Phase 1: Speak greeting
+    setJarvisState("SPEAKING_GREETING");
+    try {
+      await tts.speak(GREETING_TEXT);
+    } catch {
+      // TTS failed — proceed to listening anyway
+    }
+
+    if (!mountedRef.current) return;
+
+    // Phase 2: Start listening
+    setJarvisState("LISTENING");
+    await startRecording();
+    // Recording continues until VAD silence detection stops it → handleTranscribed fires
+  }, [tts, startRecording]);
+
+  const openVoiceMode = useCallback(() => {
+    if (!whisperAvailable) return;
+    // Reset state
+    spokenUpToRef.current = 0;
+    ttsQueueRef.current = [];
+    isSpeakingLoopActiveRef.current = false;
+    setLastTranscription("");
+    setJarvisState("IDLE");
+    setIsVoiceModeOpen(true);
+
+    // If mic is already granted, start the voice loop immediately
+    if (micPermission === "granted") {
+      void runVoiceLoop();
+    }
+    // Otherwise, the overlay will show the permission screen.
+    // After permission is granted, the overlay calls runVoiceLoop.
+  }, [whisperAvailable, micPermission, runVoiceLoop]);
+
+  const closeVoiceMode = useCallback(() => {
+    stopRecording();
+    tts.stop();
+    ttsQueueRef.current = [];
+    isSpeakingLoopActiveRef.current = false;
+    setJarvisState("IDLE");
+    setIsVoiceModeOpen(false);
+    setLastTranscription("");
+    spokenUpToRef.current = 0;
+  }, [stopRecording, tts]);
+
+  // Expose runVoiceLoop for the overlay to call after permission is granted
+  const startAfterPermission = useCallback(() => {
+    void runVoiceLoop();
+  }, [runVoiceLoop]);
+
+  // When agent finishes streaming and we haven't spoken the remaining text yet
+  useEffect(() => {
+    if (!isAgentStreaming && jarvisState === "PROCESSING" && latestAssistantText) {
+      // Agent finished — flush any remaining text to TTS
+      const remaining = latestAssistantText.slice(spokenUpToRef.current);
+      if (remaining.trim()) {
+        spokenUpToRef.current = latestAssistantText.length;
+        ttsQueueRef.current.push(remaining.trim());
+        setJarvisState("SPEAKING_RESPONSE");
+        void processQueue();
+      }
+    }
+  }, [isAgentStreaming, jarvisState, latestAssistantText, processQueue]);
+
+  return {
+    isVoiceModeOpen,
+    jarvisState,
+    micPermission,
+    volume,
+    lastTranscription,
+    voiceError,
+    whisperAvailable,
+    openVoiceMode,
+    closeVoiceMode,
+    requestMicPermission: async () => {
+      const granted = await requestMicPermission();
+      if (granted) startAfterPermission();
+      return granted;
+    },
+  };
+}

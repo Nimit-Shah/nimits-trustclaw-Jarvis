@@ -18,8 +18,11 @@ const code = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "trustclaw",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  title: "Nimit's Jarvis",
+  icons: [
+    { rel: "icon", url: "/images/jarvis-logo.png", type: "image/png" },
+    { rel: "apple-touch-icon", url: "/images/jarvis-logo.png" },
+  ],
 };
 
 export default async function RootLayout({

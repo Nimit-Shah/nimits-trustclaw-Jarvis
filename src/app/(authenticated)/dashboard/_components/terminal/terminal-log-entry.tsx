@@ -73,7 +73,7 @@ export function TerminalLogEntry({ log }: { log: TerminalLogEntryData }) {
             "Error"
           )}
         </span>
-        <span className="shrink-0 text-muted-foreground/60">
+        <span className="shrink-0 text-muted-foreground/60" suppressHydrationWarning>
           {formatTimestamp(log.timestamp)}
         </span>
       </div>
