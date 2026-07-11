@@ -58,6 +58,14 @@ const IPV4_RE =
 const API_KEY_RE =
   /\b(?:sk-[a-zA-Z0-9]{20,}|pk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36,}|gho_[a-zA-Z0-9]{36,}|ghs_[a-zA-Z0-9]{36,}|ghr_[a-zA-Z0-9]{36,}|xox[bpa]-[a-zA-Z0-9\-]{20,}|sk-ant-[a-zA-Z0-9\-]{20,}|AIza[a-zA-Z0-9\-_]{35})\b/g;
 
+/** URNs (Uniform Resource Names), commonly used for LinkedIn IDs (urn:li:person:12345) and other internal identifiers */
+const URN_RE =
+  /\burn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-:]+\b/gi;
+
+/** LinkedIn Profile URLs */
+const LINKEDIN_URL_RE =
+  /https?:\/\/(?:www\.)?linkedin\.com\/(?:in|pub|company|school)\/[a-zA-Z0-9_-]+/gi;
+
 /**
  * US street addresses. Heuristic: a number followed by words and a street suffix,
  * optionally followed by a 5-digit ZIP.
@@ -99,6 +107,8 @@ const PATTERNS: PatternEntry[] = [
   { type: "ssn", regex: SSN_RE },
   { type: "email", regex: EMAIL_RE },
   { type: "api_key", regex: API_KEY_RE },
+  { type: "linkedin_url", regex: LINKEDIN_URL_RE },
+  { type: "urn", regex: URN_RE },
   {
     type: "credit_card",
     regex: CREDIT_CARD_RE,
@@ -309,6 +319,16 @@ const PII_KEY_HEURISTICS: Record<string, PIIType> = {
   mobilephone: "phone",
   mobile_phone: "phone",
   mobile: "phone",
+  // URN / IDs
+  urn: "urn",
+  linkedin_urn: "urn",
+  linkedin_id: "urn",
+  // Social / Links
+  profileurl: "linkedin_url",
+  profile_url: "linkedin_url",
+  vanityname: "linkedin_url",
+  vanity_name: "linkedin_url",
+  publicidentifier: "linkedin_url",
 };
 
 /**
