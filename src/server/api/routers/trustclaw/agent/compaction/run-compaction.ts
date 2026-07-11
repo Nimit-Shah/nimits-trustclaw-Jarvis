@@ -74,7 +74,7 @@ async function summarize(
 ): Promise<string> {
   const provider = getModelProvider(anthropicModel);
   const model = provider === "ollama"
-    ? ollamaProvider("qwen3:8b")
+    ? ollamaProvider(anthropicModel)
     : resolveModelId(anthropicModel);
 
   // Redact PII before sending to external LLMs.
@@ -133,7 +133,7 @@ async function stagedSummarize(
 
   const mergeProvider = getModelProvider(anthropicModel);
   const mergeModel = mergeProvider === "ollama"
-    ? ollamaProvider("qwen3:8b")
+    ? ollamaProvider(anthropicModel)
     : resolveModelId(anthropicModel);
   const mergeResult = await generateText({
     model: mergeModel,

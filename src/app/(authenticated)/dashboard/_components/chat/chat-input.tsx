@@ -6,6 +6,7 @@ import type { ChatStatus } from "ai";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import { ModelSelector } from "./model-selector";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -62,80 +63,94 @@ export function ChatInput({ onSend, onStop, status, voice }: ChatInputProps) {
 
   return (
     <div className="border-border bg-background border-t p-3 md:p-4">
-      <div className="mx-auto flex max-w-2xl items-end gap-2">
-        {/* Mic / Voice Mode button */}
-        {voice && (
-          <div className="relative" title={micDisabledReason ?? "Open voice mode (Jarvis)"}>
-            <Button
-              variant="outline"
-              size="icon"
-              className={cn(
-                "size-10 shrink-0 rounded-xl transition-colors",
-                voice.whisperAvailable && !isStreaming
-                  ? "border-cyan-800/40 text-cyan-400 hover:border-cyan-600/60 hover:bg-cyan-950/30 hover:text-cyan-300"
-                  : "cursor-not-allowed opacity-40",
-              )}
-              onClick={voice.whisperAvailable && !isStreaming ? voice.onOpenVoiceMode : undefined}
-              disabled={!voice.whisperAvailable || isStreaming}
-              aria-label={micDisabledReason ?? "Open voice mode"}
-              id="voice-mode-btn"
-            >
-              <Mic className="size-4" />
-            </Button>
-            {/* Online indicator dot */}
-            {voice.whisperAvailable && (
-              <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-cyan-400 ring-1 ring-background" />
+      <div className="mx-auto flex max-w-3xl flex-col gap-2">
+        <div className="relative flex flex-col rounded-3xl border border-border bg-muted/30 p-3 shadow-sm focus-within:ring-1 focus-within:ring-ring">
+          <Textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              isStreaming ? "Waiting for response..." : "Ask me anything..."
+            }
+            disabled={isStreaming}
+            rows={1}
+            className={cn(
+              "max-h-[200px] min-h-[44px] resize-none border-0 bg-transparent text-base shadow-none focus-visible:ring-0 md:text-sm",
+              "placeholder:text-muted-foreground/50",
             )}
+          />
+
+          <div className="flex items-center justify-between pt-2 px-1">
+            <div className="flex items-center">
+              {/* Left side actions (e.g. + button) can go here later */}
+            </div>
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <ModelSelector />
+
+              {/* Mic / Voice Mode button */}
+              {voice && (
+                <div className="relative" title={micDisabledReason ?? "Open voice mode (Jarvis)"}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "size-8 rounded-full transition-colors",
+                      voice.whisperAvailable && !isStreaming
+                        ? "text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                        : "cursor-not-allowed opacity-40",
+                    )}
+                    onClick={voice.whisperAvailable && !isStreaming ? voice.onOpenVoiceMode : undefined}
+                    disabled={!voice.whisperAvailable || isStreaming}
+                    aria-label={micDisabledReason ?? "Open voice mode"}
+                    id="voice-mode-btn"
+                  >
+                    <Mic className="size-4" />
+                  </Button>
+                  {/* Online indicator dot */}
+                  {voice.whisperAvailable && (
+                    <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-cyan-400 ring-1 ring-background" />
+                  )}
+                </div>
+              )}
+
+              {isStreaming ? (
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="size-8 rounded-xl bg-destructive hover:bg-destructive/90"
+                  onClick={handleStop}
+                >
+                  <Square className="size-3 fill-current text-destructive-foreground" />
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  size="icon"
+                  className={cn(
+                    "size-8 rounded-xl bg-[#cc6b49] text-white hover:bg-[#b55c3c]",
+                    !canSend && "opacity-50",
+                  )}
+                  onClick={handleSubmit}
+                  disabled={!canSend}
+                >
+                  <ArrowUp className="size-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {isTooLong && (
+          <div className="px-2">
+            <p className="text-destructive text-xs">
+              Message is too long ({input.length.toLocaleString()}/
+              {MAX_MESSAGE_LENGTH.toLocaleString()})
+            </p>
           </div>
         )}
-
-        <Textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            isStreaming ? "Waiting for response..." : "Ask me anything..."
-          }
-          disabled={isStreaming}
-          rows={1}
-          className={cn(
-            "border-border bg-muted/50 max-h-[200px] min-h-[44px] resize-none rounded-xl text-base md:text-sm",
-            "placeholder:text-muted-foreground/50",
-            "focus-visible:ring-ring focus-visible:ring-1",
-          )}
-        />
-
-        {isStreaming ? (
-          <Button
-            variant="default"
-            size="icon"
-            className="size-10 shrink-0 rounded-xl"
-            onClick={handleStop}
-          >
-            <Square className="size-4 fill-current" />
-          </Button>
-        ) : (
-          <Button
-            variant="default"
-            size="icon"
-            className={cn(
-              "size-10 shrink-0 rounded-xl",
-              !canSend && "opacity-50",
-            )}
-            onClick={handleSubmit}
-            disabled={!canSend}
-          >
-            <ArrowUp className="size-4" />
-          </Button>
-        )}
       </div>
-      {isTooLong && (
-        <p className="text-destructive text-xs">
-          Message is too long ({input.length.toLocaleString()}/
-          {MAX_MESSAGE_LENGTH.toLocaleString()})
-        </p>
-      )}
     </div>
   );
 }

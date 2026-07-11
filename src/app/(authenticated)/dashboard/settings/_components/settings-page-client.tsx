@@ -55,7 +55,6 @@ export function SettingsPageClient() {
 
       <ErrorBoundary>
         <ModelSettings
-          currentModel={instance.anthropicModel}
           piiRedactionEnabled={instance.piiRedactionEnabled}
         />
       </ErrorBoundary>

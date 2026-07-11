@@ -23,10 +23,6 @@ const ANTHROPIC_MODEL_PREFIXES = [
  *   (identified by a `/` in the ID, e.g. `openai/gpt-4o-mini`)
  */
 export function getModelProvider(modelId: string): ModelProvider {
-  if (modelId === "qwen3:8b") {
-    return "ollama";
-  }
-
   if (modelId.startsWith("openrouter/")) {
     return "openrouter";
   }
@@ -37,7 +33,11 @@ export function getModelProvider(modelId: string): ModelProvider {
     }
   }
 
-  return "vercel-gateway";
+  if (modelId.includes("/")) {
+    return "vercel-gateway";
+  }
+
+  return "ollama";
 }
 
 /**

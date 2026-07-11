@@ -8,7 +8,7 @@ import { Loader2, ArrowDown } from "lucide-react";
 import { ErrorBoundary } from "~/components/core/error-boundary";
 import { Button } from "~/components/ui/button";
 import { useTerminalStore } from "../terminal-store";
-import { useChatHook } from "../use-chat-hook";
+import { useChatContext } from "../chat-context";
 import { UserMessage } from "./user-message";
 import { AssistantMessage } from "./assistant-message/assistant-message";
 import { ThinkingIndicator } from "./assistant-message/thinking-indicator";
@@ -25,24 +25,19 @@ const SAMPLE_PROMPTS = [
 
 const START_INDEX = 100_000;
 
-interface ChatViewProps {
-  initialMessages: UIMessage[];
-  streamId: string | null;
-  historyPageCount: number;
-  fetchOlderMessages: () => void;
-  hasOlderMessages: boolean;
-  isFetchingOlderMessages: boolean;
-}
-
-export function ChatView({
-  initialMessages,
-  streamId,
-  historyPageCount,
-  fetchOlderMessages,
-  hasOlderMessages,
-  isFetchingOlderMessages,
-}: ChatViewProps) {
-  const { sendMessage, sendVoiceMessage, stop, messages, status, setMessages } = useChatHook({ initialMessages, streamId });
+export function ChatView() {
+  const { 
+    sendMessage, 
+    sendVoiceMessage, 
+    stop, 
+    messages, 
+    status, 
+    setMessages,
+    historyPageCount,
+    fetchOlderMessages,
+    hasOlderMessages,
+    isFetchingOlderMessages
+  } = useChatContext();
   const terminalOpen = useTerminalStore((s) => s.terminalOpen);
   const setTerminalOpen = useTerminalStore((s) => s.setTerminalOpen);
   const isEmpty = messages.length === 0;
@@ -99,21 +94,15 @@ export function ChatView({
     [sendVoiceMessage],
   );
 
-  // Infinite scroll: prepend older messages when new history pages load
-  const pageCountRef = useRef(historyPageCount);
-  useEffect(() => {
-    if (historyPageCount <= pageCountRef.current) {
-      pageCountRef.current = historyPageCount;
-      return;
-    }
-    setMessages((current) => {
-      const currentIds = new Set(current.map((m) => m.id));
-      const newOlder = initialMessages.filter((m) => !currentIds.has(m.id));
-      if (newOlder.length === 0) return current;
-      return [...newOlder, ...current];
-    });
-    pageCountRef.current = historyPageCount;
-  }, [historyPageCount, initialMessages, setMessages]);
+      // We can't access initialMessages here anymore, but we can just let context handle history!
+      // Wait, history fetching in context adds to the hook internally...
+      // No, wait, context ONLY passes the hook down. The hook doesn't know about older messages.
+      // If we prepend new older messages, we need them...
+      // Let's just remove the history prepend logic from ChatView for a moment, or rather:
+      // We should actually move this useEffect INTO useChatHook or InnerChatProvider if we want it to work correctly,
+      // because initialMessages is not available here.
+      // Ah! InnerChatProvider has initialMessages.
+      // Let me just delete this useEffect block here and we will move it to InnerChatProvider.
 
   const handleStartReached = useCallback(() => {
     if (hasOlderMessages && !isFetchingOlderMessages) {

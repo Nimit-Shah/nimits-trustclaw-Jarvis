@@ -50,9 +50,15 @@ const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   "mistral/mistral-small-latest": 128_000,
 };
 
+import { getModelProvider } from "../model-utils";
+
 /** Safe fallback for models we don't have a mapping for. */
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 
 export function getContextWindow(modelId: string): number {
+  const provider = getModelProvider(modelId);
+  if (provider === "ollama") {
+    return MODEL_CONTEXT_WINDOWS[modelId] ?? 16_000;
+  }
   return MODEL_CONTEXT_WINDOWS[modelId] ?? DEFAULT_CONTEXT_WINDOW;
 }

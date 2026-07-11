@@ -56,7 +56,7 @@ export async function runMemoryFlush(
     const provider = getModelProvider(anthropicModel);
     const isOllama = provider === "ollama";
     const model = isOllama
-      ? ollamaProvider("qwen3:8b")
+      ? ollamaProvider(anthropicModel)
       : resolveModelId(anthropicModel);
 
     const allCustomTools = createCustomTools(instanceId);

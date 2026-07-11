@@ -17,6 +17,7 @@ import { saveOnboardingState } from "./saveOnboardingState";
 import { checkConnectionStatus } from "./checkConnectionStatus";
 import { getVercelModels } from "./getVercelModels";
 import { getOpenRouterModels } from "./getOpenRouterModels";
+import { getLocalModels } from "./getLocalModels";
 
 export const trustclawRouter = router({
   getInstance,
@@ -37,5 +38,6 @@ export const trustclawRouter = router({
   checkConnectionStatus,
   getVercelModels,
   getOpenRouterModels,
+  getLocalModels,
 });
 

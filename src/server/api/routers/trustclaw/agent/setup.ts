@@ -264,9 +264,9 @@ export async function prepareAgentRun(
   });
 
   const model = isOllama
-    ? ollamaProvider("qwen3:8b", {
+    ? ollamaProvider(instance.anthropicModel, {
         keep_alive: -1,
-        options: { num_ctx: getContextWindow("qwen3:8b") },
+        options: { num_ctx: getContextWindow(instance.anthropicModel) },
       })
     : provider === "openrouter"
       ? createOpenRouter({ apiKey: env.OPENROUTER_API_KEY })(resolveModelId(instance.anthropicModel))
