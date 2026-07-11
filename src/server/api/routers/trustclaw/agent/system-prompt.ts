@@ -11,6 +11,8 @@ interface SystemPromptParams {
   isOllama?: boolean;
   /** When true, PII redaction is active and the protocol section is injected */
   piiEnabled?: boolean;
+  /** When true, the voice conversation mode guidelines are appended */
+  isVoice?: boolean;
 }
 
 const DEFAULT_SOUL_PROMPT = `## Who You Are
@@ -200,6 +202,24 @@ To preserve data privacy, all incoming contextual elements, tool data (such as e
 4. When replying to the user, maintain the use of placeholders exactly as passed; do not generate or hallucinate mock data fields to fill them out.
 5. When calling tools that need specific values (email addresses, phone numbers, names), use the exact token as provided — the system will automatically restore the real value before the tool executes.`;
 
+const VOICE_MODE_GUIDELINES = `## Voice Conversation Mode
+
+The user is speaking to you using voice. Your response will be read aloud by a text-to-speech engine. Follow these rules precisely:
+
+### Response Style
+- **Keep answers to 1-3 sentences maximum.** Voice is ephemeral — listeners cannot scroll back or re-read. Lead with the direct answer.
+- **Sound conversational and natural.** Use spoken language patterns, not written document patterns. It is perfectly fine to start with a short acknowledgement like "Sure", "Got it", or "Okay" before the answer.
+- **If you need to list things, say them as a flowing sentence.** Never use markdown bullet points, numbered lists, or headings. Instead of "Here are three things: \n- A \n- B \n- C", say "There are three things: A, B, and C."
+
+### Formatting Restrictions (CRITICAL)
+- **No markdown whatsoever.** Do not use asterisks (\`**bold**\`), hyphens for bullets, hashtags for headings, backticks for code, or any other markdown syntax. The TTS engine will read these characters aloud literally, which sounds broken and robotic.
+- **No emojis.** These are also read aloud as their text description by TTS.
+- **No URLs.** If you must reference a link, describe it in words instead.
+
+### When You Need To Do More
+- If you are performing a multi-step task (calling tools, searching, fetching data), give a brief spoken status update first, e.g., "Let me look that up for you." Then complete the task and return the result as a short spoken summary.
+- If a question is too complex to answer completely in 1-3 spoken sentences, give the key insight verbally and note that you have included more detail in the text chat above.`;
+
 export function buildSystemPrompt(params: SystemPromptParams): string {
   const sections: string[] = [];
 
@@ -231,14 +251,18 @@ export function buildSystemPrompt(params: SystemPromptParams): string {
   sections.push(MESSAGING_GUIDELINES);
 
   // Only inject PII protocol when redaction is active (non-local models).
-  // This tells the model how to correctly interpret and pass through
-  // anonymized tokens without trying to guess the underlying values.
   if (params.piiEnabled) {
     sections.push(PII_ANONYMIZATION_PROTOCOL);
   }
 
   if (params.hasCompactionSummary) {
     sections.push(SESSION_CONTINUITY_NOTE);
+  }
+
+  // Voice mode: append last so it takes highest priority in model attention.
+  // Only applies when the user is interacting via voice — text mode is unaffected.
+  if (params.isVoice) {
+    sections.push(VOICE_MODE_GUIDELINES);
   }
 
   // NOTE: relevantMemories and userTimezone are intentionally NOT rendered here.

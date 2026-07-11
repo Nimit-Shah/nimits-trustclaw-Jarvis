@@ -126,6 +126,7 @@ interface PrepareAgentRunParams {
   userMessage: string;
   source: MessageSource;
   userMessageType?: "hidden";
+  isVoice?: boolean;
 }
 
 interface PrepareAgentRunResult {
@@ -140,7 +141,7 @@ type PrepareResult = { status: "ready"; result: PrepareAgentRunResult };
 export async function prepareAgentRun(
   params: PrepareAgentRunParams,
 ): Promise<PrepareResult> {
-  const { instanceId, userMessage, source, userMessageType } = params;
+  const { instanceId, userMessage, source, userMessageType, isVoice } = params;
 
   const instance = await db.composioClawInstance.findUnique({
     where: { id: instanceId },
@@ -182,6 +183,7 @@ export async function prepareAgentRun(
       hasCompactionSummary: !!instance.lastCompactionSummary,
       isOllama,
       piiEnabled: !!piiVault,
+      isVoice: isVoice ?? false,
     }),
   );
 

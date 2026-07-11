@@ -23,6 +23,7 @@ interface UseJarvisVoiceOptions {
   onSend: (text: string) => void;
   isAgentStreaming: boolean;
   latestAssistantText?: string;
+  latestAssistantMessageId?: string;
 }
 
 interface UseJarvisVoiceReturn {
@@ -109,13 +110,17 @@ export function useJarvisVoice({
   onSend,
   isAgentStreaming,
   latestAssistantText,
+  latestAssistantMessageId,
 }: UseJarvisVoiceOptions): UseJarvisVoiceReturn {
   const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
   const [jarvisState, setJarvisState] = useState<JarvisVoiceState>("IDLE");
   const [lastTranscription, setLastTranscription] = useState("");
   const [whisperAvailable, setWhisperAvailable] = useState(false);
+  const lastSpokenMessageIdRef = useRef<string | null>(null);
+  // Mutable ref so TTS queue loop can check without stale closure issues
+  const isVoiceModeOpenRef = useRef(false);
 
-  const { permissionState: micPermission, requestPermission: requestMicPermission } =
+  const { permissionState: micPermission, requestPermission: requestMicPermission, errorMessage: micErrorMessage } =
     useMicPermission();
 
   // Stable TTS instance
@@ -164,7 +169,7 @@ export function useJarvisVoice({
     if (isSpeakingLoopActiveRef.current) return;
     isSpeakingLoopActiveRef.current = true;
 
-    while (ttsQueueRef.current.length > 0 && mountedRef.current) {
+    while (ttsQueueRef.current.length > 0 && mountedRef.current && isVoiceModeOpenRef.current) {
       const sentence = ttsQueueRef.current.shift()!;
       try {
         await tts.speak(sentence);
@@ -174,9 +179,9 @@ export function useJarvisVoice({
     }
 
     isSpeakingLoopActiveRef.current = false;
-    // If we're still in SPEAKING_RESPONSE and queue is empty,
-    // and agent is no longer streaming, return to IDLE
-    if (mountedRef.current) {
+    ttsQueueRef.current = [];
+    // If we're still in SPEAKING_RESPONSE and queue is empty, return to IDLE
+    if (mountedRef.current && isVoiceModeOpenRef.current) {
       setJarvisState((prev) => (prev === "SPEAKING_RESPONSE" ? "IDLE" : prev));
     }
   }, [tts]);
@@ -184,6 +189,18 @@ export function useJarvisVoice({
   // Feed new assistant text to TTS as it streams
   useEffect(() => {
     if (!isVoiceModeOpen || !latestAssistantText || jarvisState === "IDLE") return;
+
+    // If the message ID has changed, it means a new message stream has started
+    if (latestAssistantMessageId && latestAssistantMessageId !== lastSpokenMessageIdRef.current) {
+      lastSpokenMessageIdRef.current = latestAssistantMessageId;
+      spokenUpToRef.current = 0;
+      ttsQueueRef.current = [];
+    }
+
+    // If we're looking at the ignored initial message and haven't typed a new query yet, don't read it
+    if (latestAssistantMessageId === lastSpokenMessageIdRef.current && spokenUpToRef.current >= latestAssistantText.length) {
+      return;
+    }
 
     const newText = latestAssistantText.slice(spokenUpToRef.current);
     if (!newText) return;
@@ -203,12 +220,12 @@ export function useJarvisVoice({
       setJarvisState("SPEAKING_RESPONSE");
       void processQueue();
     }
-  }, [latestAssistantText, isVoiceModeOpen, jarvisState, processQueue]);
+  }, [latestAssistantText, latestAssistantMessageId, isVoiceModeOpen, jarvisState, processQueue]);
 
   // ── Voice Mode lifecycle ──
 
   const runVoiceLoop = useCallback(async () => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || !isVoiceModeOpenRef.current) return;
 
     // Phase 1: Speak greeting
     setJarvisState("SPEAKING_GREETING");
@@ -218,7 +235,7 @@ export function useJarvisVoice({
       // TTS failed — proceed to listening anyway
     }
 
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || !isVoiceModeOpenRef.current) return;
 
     // Phase 2: Start listening
     setJarvisState("LISTENING");
@@ -228,23 +245,22 @@ export function useJarvisVoice({
 
   const openVoiceMode = useCallback(() => {
     if (!whisperAvailable) return;
-    // Reset state
-    spokenUpToRef.current = 0;
+    isVoiceModeOpenRef.current = true;
+    lastSpokenMessageIdRef.current = latestAssistantMessageId || null;
+    spokenUpToRef.current = latestAssistantText ? latestAssistantText.length : 0;
     ttsQueueRef.current = [];
     isSpeakingLoopActiveRef.current = false;
     setLastTranscription("");
     setJarvisState("IDLE");
     setIsVoiceModeOpen(true);
 
-    // If mic is already granted, start the voice loop immediately
     if (micPermission === "granted") {
       void runVoiceLoop();
     }
-    // Otherwise, the overlay will show the permission screen.
-    // After permission is granted, the overlay calls runVoiceLoop.
-  }, [whisperAvailable, micPermission, runVoiceLoop]);
+  }, [whisperAvailable, micPermission, runVoiceLoop, latestAssistantMessageId, latestAssistantText]);
 
   const closeVoiceMode = useCallback(() => {
+    isVoiceModeOpenRef.current = false;
     stopRecording();
     tts.stop();
     ttsQueueRef.current = [];
@@ -253,7 +269,20 @@ export function useJarvisVoice({
     setIsVoiceModeOpen(false);
     setLastTranscription("");
     spokenUpToRef.current = 0;
+    lastSpokenMessageIdRef.current = null;
   }, [stopRecording, tts]);
+
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      isVoiceModeOpenRef.current = false;
+      stopRecording();
+      tts.stop();
+      ttsQueueRef.current = [];
+      isSpeakingLoopActiveRef.current = false;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Expose runVoiceLoop for the overlay to call after permission is granted
   const startAfterPermission = useCallback(() => {
@@ -280,7 +309,7 @@ export function useJarvisVoice({
     micPermission,
     volume,
     lastTranscription,
-    voiceError,
+    voiceError: voiceError || micErrorMessage,
     whisperAvailable,
     openVoiceMode,
     closeVoiceMode,

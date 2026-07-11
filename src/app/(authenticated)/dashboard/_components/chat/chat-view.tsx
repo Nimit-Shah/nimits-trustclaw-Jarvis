@@ -42,7 +42,7 @@ export function ChatView({
   hasOlderMessages,
   isFetchingOlderMessages,
 }: ChatViewProps) {
-  const { sendMessage, stop, messages, status, setMessages } = useChatHook({ initialMessages, streamId });
+  const { sendMessage, sendVoiceMessage, stop, messages, status, setMessages } = useChatHook({ initialMessages, streamId });
   const terminalOpen = useTerminalStore((s) => s.terminalOpen);
   const setTerminalOpen = useTerminalStore((s) => s.setTerminalOpen);
   const isEmpty = messages.length === 0;
@@ -66,7 +66,7 @@ export function ChatView({
     prevFirstIdRef.current = currentFirstId;
   }
 
-  // ── handleSend — must be declared BEFORE useJarvisVoice ──
+  // ── handleSend (text mode) — must be declared BEFORE useJarvisVoice ──
   const handleSend = useCallback(
     (text: string) => {
       const result = sendMessage(text);
@@ -81,6 +81,22 @@ export function ChatView({
       return result;
     },
     [sendMessage],
+  );
+
+  // ── handleVoiceSend — always passes isVoice:true via sendVoiceMessage ──
+  const handleVoiceSend = useCallback(
+    (text: string) => {
+      const result = sendVoiceMessage(text);
+      requestAnimationFrame(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: "LAST",
+          align: "start",
+          behavior: "smooth",
+        });
+      });
+      return result;
+    },
+    [sendVoiceMessage],
   );
 
   // Infinite scroll: prepend older messages when new history pages load
@@ -117,11 +133,13 @@ export function ChatView({
         .map((p) => (p as { type: "text"; text: string }).text)
         .join("")
     : undefined;
+  const latestAssistantMessageId = lastAssistantMessage?.id;
 
   const jarvis = useJarvisVoice({
-    onSend: handleSend,
+    onSend: handleVoiceSend,
     isAgentStreaming: isStreaming,
     latestAssistantText,
+    latestAssistantMessageId,
   });
 
 

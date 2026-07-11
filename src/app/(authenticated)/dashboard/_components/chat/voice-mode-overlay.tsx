@@ -147,10 +147,12 @@ function useNeuralCanvas(
 
 function PermissionScreen({
   state,
+  errorMessage,
   onRequest,
   onClose,
 }: {
   state: MicPermissionState;
+  errorMessage?: string | null;
   onRequest: () => void;
   onClose: () => void;
 }) {
@@ -175,9 +177,8 @@ function PermissionScreen({
             <h2 className="font-mono text-lg font-bold tracking-wide text-cyan-200">
               Microphone Blocked
             </h2>
-            <p className="mt-2 max-w-sm font-mono text-xs leading-relaxed text-cyan-500/70">
-              Your browser has blocked microphone access for this site.
-              To re-enable it:
+            <p className="mt-2 max-w-sm font-mono text-xs leading-relaxed text-red-400">
+              {errorMessage || "Your browser has blocked microphone access for this site."}
             </p>
           </div>
           <div className="max-w-sm rounded-lg border border-cyan-900/30 bg-cyan-950/15 p-4 text-left font-mono text-xs text-cyan-400/80">
@@ -274,6 +275,7 @@ export function VoiceModeOverlay({
     return (
       <PermissionScreen
         state={micPermission}
+        errorMessage={error}
         onRequest={handlePermissionRequest}
         onClose={onClose}
       />

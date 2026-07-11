@@ -26,8 +26,9 @@ interface UseMicPermissionReturn {
  *  - "denied" from permissions.query → treated as "prompt" (user gets a chance to try)
  *  - Only set "denied" when getUserMedia() actually throws → that's the real denial
  */
-export function useMicPermission(): UseMicPermissionReturn {
+export function useMicPermission(): UseMicPermissionReturn & { errorMessage: string | null } {
   const [permissionState, setPermissionState] = useState<MicPermissionState>("unknown");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let permStatus: PermissionStatus | null = null;
@@ -38,28 +39,22 @@ export function useMicPermission(): UseMicPermissionReturn {
           { name: "microphone" as PermissionName },
         );
 
-        // Only fast-path to "granted" — never set "denied" from permissions.query
-        // because it can be stale. Let getUserMedia() confirm a real denial.
         if (permStatus.state === "granted") {
           setPermissionState("granted");
         } else {
-          // Both "prompt" and "denied" from query → show the prompt screen
-          // so the user always gets a chance to click Allow
           setPermissionState("prompt");
         }
 
-        // Subscribe to real-time changes (e.g. user changes browser settings)
         permStatus.onchange = () => {
           if (!permStatus) return;
           if (permStatus.state === "granted") {
             setPermissionState("granted");
+            setErrorMessage(null);
           } else {
-            // On revoke, go back to prompt so they can re-grant via the dialog
             setPermissionState("prompt");
           }
         };
       } catch {
-        // Safari doesn't support permissions.query for "microphone" — show prompt
         setPermissionState("prompt");
       }
     })();
@@ -71,19 +66,29 @@ export function useMicPermission(): UseMicPermissionReturn {
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     try {
-      // This is the source of truth — if this succeeds, permission is definitely granted
+      setErrorMessage(null);
+      if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("navigator.mediaDevices is undefined. This usually means you are not using HTTPS (secure context).");
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
       setPermissionState("granted");
       return true;
-    } catch {
-      // getUserMedia failed → now we know for sure it's denied
+    } catch (err: any) {
+      console.error("Mic permission error:", err);
+      let msg = err.message || "Unknown error";
+      if (err.name === "NotAllowedError") msg = "Permission was denied by the user or OS.";
+      else if (err.name === "NotFoundError") msg = "No microphone found on this device.";
+      else if (err.name === "NotReadableError") msg = "Microphone is in use by another application.";
+      
+      setErrorMessage(`${err.name ? err.name + ": " : ""}${msg}`);
       setPermissionState("denied");
       return false;
     }
   }, []);
 
-  return { permissionState, requestPermission };
+  return { permissionState, requestPermission, errorMessage };
 }
 
 

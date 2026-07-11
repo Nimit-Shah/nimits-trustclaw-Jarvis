@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
   // 3. Forward to local Whisper server
   const whisperForm = new FormData();
-  whisperForm.append("file", audio, "recording.webm");
+  whisperForm.append("file", audio, "recording.wav");
   whisperForm.append("model", env.WHISPER_MODEL);
 
   let whisperRes: Response;
@@ -55,8 +55,13 @@ export async function POST(request: Request) {
   }
 
   if (!whisperRes.ok) {
+    let errBody = "";
+    try {
+      errBody = await whisperRes.text();
+    } catch {}
+    console.error("Whisper server error status:", whisperRes.status, "Body:", errBody);
     return Response.json(
-      { error: "Whisper transcription failed", code: "TRANSCRIPTION_FAILED" },
+      { error: `Whisper transcription failed: ${errBody || whisperRes.statusText}`, code: "TRANSCRIPTION_FAILED" },
       { status: 500 },
     );
   }

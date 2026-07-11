@@ -17,9 +17,20 @@ export function useChatHook({ initialMessages, streamId }: {
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: "/api/chat",
-      prepareReconnectToStreamRequest: () => {
-        return { api: `/api/chat?streamId=${streamId}` };
-      },
+      // prepareSendMessagesRequest fires right before each HTTP POST.
+      // requestMetadata is what was passed as `metadata` in sendMessage().
+      // We read isVoice from it and hoist it to the top-level body field
+      // so the server can parse it without any nested key lookups.
+      prepareSendMessagesRequest: ({ messages, requestMetadata, body }) => ({
+        body: {
+          ...body,
+          messages,
+          isVoice: (requestMetadata as { isVoice?: boolean } | undefined)?.isVoice ?? false,
+        },
+      }),
+      prepareReconnectToStreamRequest: () => ({
+        api: `/api/chat?streamId=${streamId}`,
+      }),
     });
   }, [streamId]);
 
@@ -51,8 +62,15 @@ export function useChatHook({ initialMessages, streamId }: {
   const sendMessageRef = useRef(chat.sendMessage);
   sendMessageRef.current = chat.sendMessage;
 
+  // Standard text-mode send — isVoice is always false.
   const sendMessage = useCallback((text: string) => {
-    void sendMessageRef.current({ text });
+    void sendMessageRef.current({ text, metadata: { isVoice: false } });
+  }, []);
+
+  // Voice-mode send — isVoice is always true. Use this from useJarvisVoice.
+  // Defined separately so there's no timing dependency on React state updates.
+  const sendVoiceMessage = useCallback((text: string) => {
+    void sendMessageRef.current({ text, metadata: { isVoice: true } });
   }, []);
 
   const stopRef = useRef(chat.stop);
@@ -64,6 +82,7 @@ export function useChatHook({ initialMessages, streamId }: {
 
   return {
     sendMessage,
+    sendVoiceMessage,
     stop: stableStop,
     // Return initialMessages until seeded to avoid flash of empty state
     messages: isSeeded ? chat.messages : initialMessages,

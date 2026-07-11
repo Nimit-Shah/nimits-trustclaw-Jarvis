@@ -20,6 +20,8 @@ const chatRequestBody = z.object({
       parts: z.array(z.record(z.string(), z.unknown())).optional(),
     }),
   ),
+  // Injected by prepareSendMessagesRequest in use-chat-hook.ts for voice requests
+  isVoice: z.boolean().optional(),
 });
 
 async function getAuthenticatedInstance(request: Request) {
@@ -117,10 +119,14 @@ export async function POST(request: Request) {
     });
   }
 
+  // E2E verification log — remove after confirming voice flag flows end-to-end
+  console.log(`[chat/route] isVoice=${String(body.data.isVoice ?? false)}`);
+
   const prepareResult = await prepareAgentRun({
     instanceId,
     userMessage: userText,
     source: "web",
+    isVoice: body.data.isVoice ?? false,
   });
 
   const { agent, messages, piiVault } = prepareResult.result;
