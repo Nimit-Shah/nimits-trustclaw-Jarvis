@@ -7,17 +7,15 @@
 ---
 
 ## 🎯 The Aim
-To run a robust, **24x7 personal agent** on your local machine using state-of-the-art **open-source AI models** (Ollama `qwen3:8b` and `qllama/bge-small-en-v1.5` embeddings) or cloud models via **OpenRouter** and **Vercel AI SDK**. Integrated with **Composio** to securely authenticate and control external services (Slack, Gmail, GitHub, Notion, etc.) via OAuth, all protected by a robust **PII Encryption Layer** that ensures your personal data never leaks to external models.
-
----
-
-## ✨ Features
+To run a robust, **24x7 personal agent** on your local machine using state-of-the-art **open-source AI models** (Ollama `qwen3:8b` and `qllama/bge-small-en-v1.5` embeddings) or cloud models via **OpenRouter** and **Vercel AI SDK**. Integrated with **Composio** to securely authenticate and control external services (Slack, Gmail, GitHub, Notion, etc.) via OAuth, all protected by a robust **PII Encryption Layer** that ensures your personal data never leaks to external models.## ✨ Features
 
 * 🔌 **Composio OAuth Integration:** Securely connect and control over 1,000+ external apps and services using Composio. No raw API keys are ever exposed to the agent.
 * 🧠 **Multi-Gateway Intelligence:** Powered by local models (Ollama) or external cloud models via **OpenRouter** and **Vercel AI SDK**, offering ultimate flexibility and choice.
-* 🛡 **PII Protection Layer:** When using cloud models, sensitive data (emails, phone numbers, names) is automatically redacted before leaving your machine and restored upon response. Local models bypass this for speed.
+* 🎙 **Whisper Voice Mode:** Integrated speech-to-text dialogue mode using **Whisper** and a custom UI transport. The response engine is strictly optimized for text-to-speech rendering: enforced 2-sentence limits, preferred contractions, zero markdown/emojis, and muted internal tool states to prevent speech pollution.
+* 🧠 **Smart Memory Routing:** Logical routing decision rules within the system prompt determine when to query Postgres `pgvector` memory tools versus answering from LLM training data, eliminating unnecessary database lookup latency.
+* 🛡 **Robust PII Protection Layer:** When using cloud models, sensitive data (emails, phone numbers, names, LinkedIn Profile URLs, vanity name fields, and Uniform Resource Names/URNs) is automatically tokenized and redacted before leaving your network. Local models bypass this for speed.
 * 💾 **Semantic Memory:** Persistent memory storage using Postgres and `pgvector` with `384`-dimension vectors.
-* 💤 **Auto-Autopilot (Cron Jobs):** Schedule recurring background tasks (e.g. daily summaries, inbox cleaning, automated reports) that trigger the agent 24/7.
+* 💤 **Auto-Autopilot (Cron Jobs):** Schedule recurring background tasks (e.g. daily summaries, inbox cleaning, automated reports) that trigger the agent 24/7. Hardened against indirect prompt injection via context isolation.
 * 🔐 **Privacy-First & Secure:** Sensitive credentials stay encrypted. Destructive scripts are locked within Composio's sandboxed environment.
 * 💬 **Omnichannel:** Chat with your agent via the next-generation Next.js Web Dashboard or link it directly to a **Telegram Bot** for on-the-go automation.
 
@@ -26,34 +24,45 @@ To run a robust, **24x7 personal agent** on your local machine using state-of-th
 ## 🏗 System Architecture
 
 ```
-                                  ┌───────────────────────────┐
-                                  │      Client Interfaces    │
-                                  │   (Web Dashboard / TG)    │
-                                  └─────────────┬─────────────┘
-                                                │
-                                                ▼
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 Local Machine / Server                                 │
-│                                                                                        │
-│   ┌───────────────────────┐         ┌────────────────────┐         ┌───────────────┐   │
-│   │    Next.js Backend    │◄───────▶│  PII Encryption    │◄───────▶│ Postgres DB   │   │
-│   │ (tRPC & Agent Loop)   │         │       Layer        │         │  (pgvector)   │   │
-│   └───────────┬───────────┘         └─────────┬──────────┘         └───────────────┘   │
-│               │                               │                                        │
-│               │                      ┌────────┴────────┐                               │
-│               │                      ▼                 ▼                               │
-│               │             ┌─────────────────┐ ┌────────────────┐                     │
-│               │             │   Local LLMs    │ │   Cloud LLMs   │                     │
-│               │             │(Ollama Engine)  │ │ (OpenRouter /  │                     │
-│               │             │                 │ │ Vercel AI SDK) │                     │
-│               │             └─────────────────┘ └────────────────┘                     │
-└───────────────┼────────────────────────────────────────────────────────────────────────┘
-                │
-                ▼
-┌───────────────────────────┐
-│     Composio Router       │
-│  (OAuth Brokers & Tools)  │
-└───────────────────────────┘
+                                        ┌───────────────────────────┐
+                                        │      Client Interfaces    │
+                                        │   (Web Dashboard / TG)    │
+                                        └─────────────┬─────────────┘
+                                                      │
+                                    ┌─────────────────┴─────────────────┐
+                       Text Mode    ▼                                   ▼  Voice Mode
+             ┌──────────────────────────────┐                 ┌───────────────────┐
+             │       Next.js Chat API       │                 │ Whisper Audio API │
+             │      (tRPC & Agent Loop)     │                 │   (Transcribe)    │
+             └──────────────┬───────────────┘                 └─────────┬─────────┘
+                            │                                           │
+                            │      [Voice Mode Metadata: isVoice=true]  │
+                            │◄──────────────────────────────────────────┘
+                            ▼
+ ┌────────────────────────────────────────────────────────────────────────────────────────┐
+ │                                 Local Machine / Server                                 │
+ │                                                                                        │
+ │ ┌────────────────────────┐         ┌────────────────────┐         ┌───────────────┐    │
+ │ │     System Prompt      │         │   PII Anonymizer   │         │ Postgres DB   │    │
+ │ │       Compiler         │◄───────▶│ (Regex & JSON Keys │◄───────▶│  (pgvector &  │    │
+ │ │ (Memory Routing / XML) │         │  Redacts URNs/URLs)│         │  Memory Store)│    │
+ │ └───────────┬────────────┘         └─────────┬──────────┘         └───────────────┘    │
+ │             │                                │                                         │
+ │             │                       ┌────────┴────────┐                                │
+ │             │                       ▼                 ▼                                │
+ │             │              ┌─────────────────┐ ┌────────────────┐                      │
+ │             │              │   Local LLMs    │ │   Cloud LLMs   │                      │
+ │             │              │(Ollama Engine)  │ │ (OpenRouter /  │                      │
+ │             │              │                 │ │ Vercel AI SDK) │                      │
+ │             │              └─────────────────┘ └────────────────┘                      │
+ └─────────────┼──────────────────────────────────────────────────────────────────────────┘
+               │
+               ▼
+ ┌───────────────────────────┐
+ │     Composio Router       │
+ │  (OAuth Brokers & Tools)  │
+ │  (Returns large PII data) │
+ └───────────────────────────┘
 ```
 
 ---
@@ -120,10 +129,11 @@ Open [http://localhost:3000](http://localhost:3000) to complete the onboarding a
 * **OAuth Credentials Protection:** The agent executes transactions through OAuth flows managed by Composio. No direct service keys (e.g., Google OAuth keys, GitHub personal tokens) are visible to the agent's code context.
 * **PII Encryption & Redaction (Defense-in-Depth):** TrustClaw deploys a multi-layered anonymization process to protect your data before it leaves your network:
   1. **Tool-Output Redaction:** Incoming results from 500+ third-party tools are intercepted and scrubbed.
-  2. **Deep-Walk Scanner Heuristic:** Scans raw JSON key names (like `name`, `email`, `phone`) at any nesting depth to catch PII in arbitrary tool schemas.
+  2. **Deep-Walk Scanner Heuristic:** Scans raw JSON key names (like `name`, `email`, `phone`, `vanityName`, `profileUrl`) at any nesting depth to catch PII in arbitrary tool schemas.
   3. **Context Message Redaction:** Historical dialogue turns are fully redacted using session-isolated, deterministic placeholders.
-  4. **Transport-Layer Shield (Final Checkpoint):** Sits as a network-level bottleneck right before serialization, deep-scrubbing the entire compiled payload (including instructions, system prompts, and history) to catch any edge-case leaks.
-  5. **SSE Response Reconstruction:** An intercepting transform stream maps these tokens back to your original data on the way to the frontend, ensuring you see clean, unredacted outputs while keeping external LLMs completely blind to your sensitive data. Local models bypass this for speed.
+  4. **Advanced Identity & ID Filtering:** Recognizes and redacts generic Uniform Resource Names (URNs), LinkedIn profile urls (e.g., `/in/jackson-123`), and vanity name fields dynamically, preventing direct global identification leaks.
+  5. **Transport-Layer Shield (Final Checkpoint):** Sits as a network-level bottleneck right before serialization, deep-scrubbing the entire compiled payload (including instructions, system prompts, and history) to catch any edge-case leaks.
+  6. **SSE Response Reconstruction:** An intercepting transform stream maps these tokens back to your original data on the way to the frontend, ensuring you see clean, unredacted outputs while keeping external LLMs completely blind to your sensitive data. Local models bypass this for speed.
 
 ---
 
