@@ -2,7 +2,7 @@
 
 ## Product overview
 
-NimitsJarvis - a self-hostable personal AI agent with vector memory, Composio tools, and a Telegram bot.
+Nimits-Jarvis - a self-hostable personal AI agent with vector memory, Composio tools, and a Telegram bot.
 
 ## Tech Stack
 

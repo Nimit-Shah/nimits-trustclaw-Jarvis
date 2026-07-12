@@ -1,8 +1,8 @@
-# 🤖 nimits-nimits-jarvis-Jarvis
+# 🤖 Nimits-Jarvis
 
 **Your 100% Local, 24/7 Personal AI Agent — Operating Securely at Zero Cost.**
 
-`nimits-nimits-jarvis-Jarvis` is a secure, self-hosted personal AI assistant built on top of **NimitsJarvis** and **Composio**. By utilizing open-source models locally via **Ollama**, this system runs continuously, remembers everything that matters, and automates your digital life without costing a single rupee in API bills.
+`Nimits-Jarvis` is a secure, self-hosted personal AI assistant built on top of **Nimits-Jarvis** and **Composio**. By utilizing open-source models locally via **Ollama**, this system runs continuously, remembers everything that matters, and automates your digital life without costing a single rupee in API bills.
 
 ---
 
@@ -96,8 +96,8 @@ ollama pull qllama/bge-small-en-v1.5
 Clone this repository and configure your environment variables:
 ```bash
 # Clone the repository (if not already cloned)
-git clone https://github.com/Nimit-Shah/nimits-nimits-jarvis-Jarvis.git
-cd nimits-nimits-jarvis-Jarvis
+git clone https://github.com/Nimit-Shah/nimits-jarvis.git
+cd nimits-jarvis
 
 # Install dependencies
 pnpm install
@@ -132,7 +132,7 @@ Open [http://localhost:3000](http://localhost:3000) to complete the onboarding a
 
 * **Zero Local System Execution:** Any code execution or complex scripting performed by tools runs inside Composio's remote workbench sandboxes, keeping your host machine safe from prompt injection attacks.
 * **OAuth Credentials Protection:** The agent executes transactions through OAuth flows managed by Composio. No direct service keys (e.g., Google OAuth keys, GitHub personal tokens) are visible to the agent's code context.
-* **PII Encryption & Redaction (Defense-in-Depth):** NimitsJarvis deploys a multi-layered anonymization process to protect your data before it leaves your network:
+* **PII Encryption & Redaction (Defense-in-Depth):** Nimits-Jarvis deploys a multi-layered anonymization process to protect your data before it leaves your network:
   1. **Tool-Output Redaction:** Incoming results from 500+ third-party tools are intercepted and scrubbed.
   2. **Deep-Walk Scanner Heuristic:** Scans raw JSON key names (like `name`, `email`, `phone`, `vanityName`, `profileUrl`) at any nesting depth to catch PII in arbitrary tool schemas.
   3. **Context Message Redaction:** Historical dialogue turns are fully redacted using session-isolated, deterministic placeholders.

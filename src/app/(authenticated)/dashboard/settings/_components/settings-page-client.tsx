@@ -34,12 +34,12 @@ export function SettingsPageClient() {
     return (
       <div className="mx-auto w-full max-w-2xl p-4 md:p-6">
         <div className="text-center">
-          <p className="text-muted-foreground">No NimitsJarvis instance found.</p>
+          <p className="text-muted-foreground">No Nimits-Jarvis instance found.</p>
           <Link
             href="/dashboard"
             className="text-primary mt-2 inline-block hover:underline"
           >
-            Go to NimitsJarvis
+            Go to Nimits-Jarvis
           </Link>
         </div>
       </div>

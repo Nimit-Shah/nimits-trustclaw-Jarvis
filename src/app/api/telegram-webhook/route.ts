@@ -114,7 +114,7 @@ async function handleStartCommand(chatId: string, text: string): Promise<void> {
   if (!token) {
     await sendTelegramMessage(
       chatId,
-      `Welcome! To link your NimitsJarvis agent, use the link from ${env.NEXT_PUBLIC_APP_URL}/dashboard/settings.`,
+      `Welcome! To link your Nimits-Jarvis agent, use the link from ${env.NEXT_PUBLIC_APP_URL}/dashboard/settings.`,
     );
     return;
   }
@@ -142,7 +142,7 @@ async function handleStartCommand(chatId: string, text: string): Promise<void> {
 
   await sendTelegramMessage(
     chatId,
-    "Linked! I'm your NimitsJarvis by Composio agent. Send me a message anytime.",
+    "Linked! I'm your Nimits-Jarvis by Composio agent. Send me a message anytime.",
   );
 }
 

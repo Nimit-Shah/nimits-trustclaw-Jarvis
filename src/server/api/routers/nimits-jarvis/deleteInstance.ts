@@ -14,7 +14,7 @@ export const deleteInstance = protectedProcedure.mutation(async ({ ctx }) => {
     if (!instance) {
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: "NimitsJarvis by Composio instance not found",
+        message: "Nimits-Jarvis by Composio instance not found",
       });
     }
 

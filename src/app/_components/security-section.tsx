@@ -6,19 +6,19 @@ const RISKS = [
     label: "UNTRUSTED SKILLS",
     description:
       "5,700+ unvetted community skills on ClawHub. Malicious ones were found within weeks.",
-    answer: "NimitsJarvis runs on Composio's managed tool surface instead.",
+    answer: "Nimits-Jarvis runs on Composio's managed tool surface instead.",
   },
   {
     label: "EXPOSED CREDENTIALS",
     description:
       "API keys stored in plaintext on your machine. 900+ instances found leaking tokens.",
-    answer: "NimitsJarvis never gives the agent a raw key.",
+    answer: "Nimits-Jarvis never gives the agent a raw key.",
   },
   {
     label: "UNSAFE CODE EXECUTION",
     description:
       "Scripts run locally with your permissions. One prompt injection from an email can trigger destructive commands.",
-    answer: "NimitsJarvis sandboxes all execution remotely.",
+    answer: "Nimits-Jarvis sandboxes all execution remotely.",
   },
 ] as const;
 

@@ -15,7 +15,7 @@ export const updateSettings = protectedProcedure
     if (!instance) {
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: "NimitsJarvis by Composio instance not found",
+        message: "Nimits-Jarvis by Composio instance not found",
       });
     }
 

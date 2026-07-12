@@ -1,6 +1,6 @@
 # @composio/nimits-jarvis
 
-One-command deploy for [NimitsJarvis](https://github.com/ComposioHQ/nimits-jarvis) on Vercel.
+One-command deploy for [Nimits-Jarvis](https://github.com/ComposioHQ/nimits-jarvis) on Vercel.
 
 ## Usage
 

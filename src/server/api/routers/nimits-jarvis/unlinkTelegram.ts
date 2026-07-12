@@ -14,7 +14,7 @@ export const unlinkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
     if (!instance) {
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: "No NimitsJarvis by Composio instance found",
+        message: "No Nimits-Jarvis by Composio instance found",
       });
     }
 

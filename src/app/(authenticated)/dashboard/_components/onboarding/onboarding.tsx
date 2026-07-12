@@ -214,7 +214,7 @@ export function Onboarding({
                 Setting things up...
               </h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Creating your NimitsJarvis instance and connecting tools
+                Creating your Nimits-Jarvis instance and connecting tools
               </p>
             </motion.div>
             {createInstance.isError && (

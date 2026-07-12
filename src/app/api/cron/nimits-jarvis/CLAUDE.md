@@ -1,4 +1,4 @@
-# NimitsJarvis Cron System
+# Nimits-Jarvis Cron System
 
 ## Overview
 
