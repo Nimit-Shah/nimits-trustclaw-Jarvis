@@ -25,7 +25,7 @@ async function findRepoRoot(): Promise<string> {
   }
 
   throw new Error(
-    "Could not locate prisma/schema.prisma. Run this from inside your trustclaw clone.",
+    "Could not locate prisma/schema.prisma. Run this from inside your nimits-jarvis clone.",
   );
 }
 
@@ -33,7 +33,7 @@ interface RunMigrationArgs {
   databaseUrl: string;
   /**
    * Absolute path to a directory containing `prisma/schema.prisma`. Required
-   * when the CLI is running outside any local trustclaw clone (the fork
+   * when the CLI is running outside any local nimits-jarvis clone (the fork
    * deploy path) — pass the path returned by `cloneForkLocally`. If omitted,
    * we'll search for the schema in/around `process.cwd()`.
    */

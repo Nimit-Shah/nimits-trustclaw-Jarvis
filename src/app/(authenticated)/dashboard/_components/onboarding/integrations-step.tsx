@@ -29,7 +29,7 @@ export function IntegrationsStep({
   const initializedRef = useRef(false);
 
   const { data, isLoading, error, refetch } =
-    trpc.trustclaw.getIntegrationAuthLinks.useQuery(undefined, {
+    trpc.nimitsJarvis.getIntegrationAuthLinks.useQuery(undefined, {
       refetchInterval: 5000,
     });
 

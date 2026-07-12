@@ -16,7 +16,7 @@ export function OnboardingClient({
 }: OnboardingClientProps) {
   const router = useRouter();
 
-  const { data, isLoading } = trpc.trustclaw.getInstance.useQuery(
+  const { data, isLoading } = trpc.nimitsJarvis.getInstance.useQuery(
     undefined,
     { enabled: hasOnboardingState },
   );

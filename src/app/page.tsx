@@ -3,7 +3,7 @@ import { LandingPage } from "./_components/landing-page";
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "TrustClaw",
+  name: "NimitsJarvis",
   description:
     "Your 24/7 AI assistant with 1000+ integrations via OAuth and sandboxed execution.",
   applicationCategory: "Productivity",

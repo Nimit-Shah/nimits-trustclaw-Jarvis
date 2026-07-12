@@ -1,5 +1,5 @@
-import { createMemorySaveTool } from "~/server/api/routers/trustclaw/agent/tools/memory-save";
-import { createMemorySearchTool } from "~/server/api/routers/trustclaw/agent/tools/memory-search";
+import { createMemorySaveTool } from "~/server/api/routers/nimits-jarvis/agent/tools/memory-save";
+import { createMemorySearchTool } from "~/server/api/routers/nimits-jarvis/agent/tools/memory-search";
 import { db } from "~/server/clients/db";
 
 async function runTests() {
@@ -24,7 +24,7 @@ async function runTests() {
 
   console.log("\n--- 1. Testing memory-save ---");
   const saveResult = await saveTool.execute({
-    content: "I want to deploy TrustClaw using Vercel. Also, my project is called Project Aurora.",
+    content: "I want to deploy NimitsJarvis using Vercel. Also, my project is called Project Aurora.",
   }, {
     toolCallId: "test",
     messages: []

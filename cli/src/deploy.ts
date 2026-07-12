@@ -28,14 +28,14 @@ import { loadConfig, saveConfig } from "./config.js";
 
 export async function deploy(): Promise<void> {
   console.clear();
-  intro("trustclaw deploy");
+  intro("nimits-jarvis deploy");
 
   try {
     await warnIfOutdated();
     const auth = await detectAuth();
 
     // Detect local checkout up front so we can read cached defaults from
-    // .trustclaw-deploy.json (project name, repo name) and pre-fill prompts.
+    // .nimits-jarvis-deploy.json (project name, repo name) and pre-fill prompts.
     const localRepo = await detectLocalRepo();
     const cachedConfig = localRepo ? await loadConfig(localRepo.rootDir) : {};
 
@@ -170,7 +170,7 @@ export async function deploy(): Promise<void> {
     console.log(`\n  Deployment URL: ${deploymentUrl}\n`);
     await open(deploymentUrl).catch(() => {});
 
-    // Use the stable production alias (e.g. trustclaw-test.vercel.app) for the
+    // Use the stable production alias (e.g. nimits-jarvis-test.vercel.app) for the
     // Telegram webhook so it survives across redeploys. The per-deployment URL
     // returned by triggerProductionDeploy changes on every push.
     const stableUrl = await getProductionAlias({

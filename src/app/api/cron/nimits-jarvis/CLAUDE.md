@@ -1,8 +1,8 @@
-# TrustClaw Cron System
+# NimitsJarvis Cron System
 
 ## Overview
 
-Vercel Cron hits `GET /api/cron/trustclaw` every minute (configured in `vercel.json`). This endpoint finds due cron jobs, claims them atomically, groups them by instance, and dispatches one `POST /api/cron/trustclaw/execute` invocation per instance for batched execution.
+Vercel Cron hits `GET /api/cron/nimits-jarvis` every minute (configured in `vercel.json`). This endpoint finds due cron jobs, claims them atomically, groups them by instance, and dispatches one `POST /api/cron/nimits-jarvis/execute` invocation per instance for batched execution.
 
 ## Architecture
 
@@ -10,7 +10,7 @@ Vercel Cron hits `GET /api/cron/trustclaw` every minute (configured in `vercel.j
 Vercel Cron (every minute)
     |
     v
-GET /api/cron/trustclaw        (route.ts)
+GET /api/cron/nimits-jarvis        (route.ts)
     |
     |  1. Atomic UPDATE ... RETURNING claims due + stale-locked jobs
     |  2. Sets lockedAt/lockedBy, clears nextRunAt (prevents re-pick)
@@ -55,10 +55,10 @@ Jobs use DB-level locking via atomic `UPDATE ... WHERE` to prevent duplicates:
 | `route.ts` | Cron handler - claims jobs, dispatches to execute |
 | `execute/route.ts` | Per-job executor - runs agent via `after()`, releases lock |
 | `execute/route.schema.ts` | Zod schema for execute endpoint body |
-| `~/server/api/routers/trustclaw/agent/tools/cron-utils.ts` | `computeNextRunAt()`, `validateCronExpression()` |
-| `~/server/api/routers/trustclaw/agent/run.ts` | `runAgent()` - the AI agent loop |
-| `~/server/api/routers/trustclaw/toggleCronJob.ts` | Clears lock when disabling a job |
-| `~/server/api/routers/trustclaw/getCronJobs.ts` | Exposes `lockedAt`, `lastError` to frontend |
+| `~/server/api/routers/nimits-jarvis/agent/tools/cron-utils.ts` | `computeNextRunAt()`, `validateCronExpression()` |
+| `~/server/api/routers/nimits-jarvis/agent/run.ts` | `runAgent()` - the AI agent loop |
+| `~/server/api/routers/nimits-jarvis/toggleCronJob.ts` | Clears lock when disabling a job |
+| `~/server/api/routers/nimits-jarvis/getCronJobs.ts` | Exposes `lockedAt`, `lastError` to frontend |
 | `prisma/schema.prisma` (`CronJob` model) | `lockedAt`, `lockedBy`, `lastError` fields |
 
 ## Database Schema (CronJob)

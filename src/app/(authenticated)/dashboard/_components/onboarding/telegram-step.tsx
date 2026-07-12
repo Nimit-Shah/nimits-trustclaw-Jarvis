@@ -30,14 +30,14 @@ export function TelegramStep({ onBack, onSkip, onComplete }: TelegramStepProps) 
     };
   }, []);
 
-  const linkTelegram = trpc.trustclaw.linkTelegram.useMutation({
+  const linkTelegram = trpc.nimitsJarvis.linkTelegram.useMutation({
     onError: trpcToastOnError,
   });
 
   const telegramToken = linkTelegram.data?.token ?? null;
   const telegramBotUsername = linkTelegram.data?.botUsername ?? null;
 
-  const { data: instanceData } = trpc.trustclaw.getInstance.useQuery(
+  const { data: instanceData } = trpc.nimitsJarvis.getInstance.useQuery(
     undefined,
     {
       enabled: !!telegramToken && !telegramLinked,

@@ -59,7 +59,7 @@ export async function rateLimit(
   try {
     for (const { limit, windowSeconds } of windowsFor(kind)) {
       const bucket = Math.floor(Date.now() / 1000 / windowSeconds);
-      const key = `trustclaw:rate-limit:${kind}:${windowSeconds}:${bucket}:${userId}`;
+      const key = `nimits-jarvis:rate-limit:${kind}:${windowSeconds}:${bucket}:${userId}`;
       const count = await redis.incr(key);
       if (count === 1) {
         await redis.expire(key, windowSeconds);

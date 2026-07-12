@@ -98,8 +98,8 @@ export async function maybeSetupTelegram(args: TelegramSetupArgs): Promise<boole
   note(
     `In your @BotFather chat:\n` +
       `  1. Send /newbot\n` +
-      `  2. Pick a display name (e.g. "My TrustClaw")\n` +
-      `  3. Pick a username - must end in "bot" (e.g. my_trustclaw_bot)\n` +
+      `  2. Pick a display name (e.g. "My NimitsJarvis")\n` +
+      `  3. Pick a username - must end in "bot" (e.g. my_nimits-jarvis_bot)\n` +
       `  4. @BotFather replies with a token like 1234567:ABC-DEF...\n` +
       `  5. Copy the token and paste it below`,
     "Get your bot token",

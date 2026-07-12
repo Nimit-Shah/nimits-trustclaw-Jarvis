@@ -19,7 +19,7 @@ export async function triggerProductionDeploy(args: TriggerArgs): Promise<{ url:
     method: "POST",
     headers: { Authorization: `Bearer ${args.token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      name: "trustclaw",
+      name: "nimits-jarvis",
       target: "production",
       project: args.projectId,
       gitSource: {

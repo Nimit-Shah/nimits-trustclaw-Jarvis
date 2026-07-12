@@ -1,4 +1,4 @@
-# Contributing to TrustClaw
+# Contributing to NimitsJarvis
 
 Thanks for wanting to help! Whether you're fixing a bug, building a new feature, or improving the docs - contributions are welcome.
 
@@ -7,7 +7,7 @@ Thanks for wanting to help! Whether you're fixing a bug, building a new feature,
 1. **Fork** the repo and clone your fork:
 
    ```bash
-   git clone https://github.com/<your-username>/trustclaw && cd trustclaw
+   git clone https://github.com/<your-username>/nimits-jarvis && cd nimits-jarvis
    ```
 
 2. **Install dependencies:**
@@ -50,12 +50,12 @@ Before submitting a PR, run `pnpm check` to typecheck + lint together.
 The full architecture and conventions live in [`CLAUDE.md`](./CLAUDE.md). The high-level structure:
 
 - `src/app/` - Next.js App Router pages
-- `src/server/api/routers/trustclaw/` - tRPC procedures (one per file, with `.schema.ts` for input/output)
-- `src/server/api/routers/trustclaw/agent/` - the AI agent runtime (tool loop, context management, system prompts)
+- `src/server/api/routers/nimits-jarvis/` - tRPC procedures (one per file, with `.schema.ts` for input/output)
+- `src/server/api/routers/nimits-jarvis/agent/` - the AI agent runtime (tool loop, context management, system prompts)
 - `src/components/ui/` - shadcn primitives
 - `src/components/core/` - shared core components
 - `prisma/schema.prisma` - database schema (Postgres + pgvector)
-- `cli/` - the `trustclaw deploy` CLI (separate package)
+- `cli/` - the `nimits-jarvis deploy` CLI (separate package)
 
 ## Coding conventions
 
@@ -81,7 +81,7 @@ If your change touches the deploy flow (anything in `cli/`), please also test it
 
 ## Reporting bugs / requesting features
 
-Open an [issue](https://github.com/ComposioHQ/trustclaw/issues). For bugs, include:
+Open an [issue](https://github.com/ComposioHQ/nimits-jarvis/issues). For bugs, include:
 
 - What you expected to happen
 - What actually happened

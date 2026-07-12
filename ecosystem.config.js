@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "trustclaw-web",
+      name: "nimits-jarvis-web",
       script: "npm",
       args: "run start",
       env: {

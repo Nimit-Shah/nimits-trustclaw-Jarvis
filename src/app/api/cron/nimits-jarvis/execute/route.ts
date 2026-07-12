@@ -4,9 +4,9 @@ import { Prisma } from "~/generated/prisma/client";
 import { z } from "zod";
 import { env } from "~/env";
 import { db } from "~/server/clients/db";
-import { prepareAgentRun } from "~/server/api/routers/trustclaw/agent/setup";
-import { computeNextRunSafe } from "~/server/api/routers/trustclaw/agent/tools/cron-utils";
-import { stripToolResultEchoes } from "~/server/api/routers/trustclaw/agent/strip-tool-echoes";
+import { prepareAgentRun } from "~/server/api/routers/nimits-jarvis/agent/setup";
+import { computeNextRunSafe } from "~/server/api/routers/nimits-jarvis/agent/tools/cron-utils";
+import { stripToolResultEchoes } from "~/server/api/routers/nimits-jarvis/agent/strip-tool-echoes";
 import { rateLimit } from "~/server/clients/rate-limit";
 import { sendTelegramMessage } from "~/server/clients/telegram";
 import { executeJobInput, cronJobRow, type CronJobRow } from "./route.schema";
@@ -147,7 +147,7 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   // Bearer-auth via CRON_SECRET (auto-injected by Vercel for cron-triggered
-  // routes; the dispatcher /api/cron/trustclaw forwards it on internal fetch).
+  // routes; the dispatcher /api/cron/nimits-jarvis forwards it on internal fetch).
   // Dev mode allows unauthenticated calls so the local trigger script works.
   if (env.NODE_ENV !== "development") {
     // Fail closed before the bearer comparison: if CRON_SECRET is missing

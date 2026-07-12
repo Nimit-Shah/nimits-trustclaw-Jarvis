@@ -13,10 +13,10 @@ import {
 } from "~/components/core/toast-notifications";
 
 export function ModelSelector() {
-  const { data: instance, isLoading: isInstanceLoading } = trpc.trustclaw.getInstance.useQuery();
-  const { data: vercelModels, isLoading: isLoadingVercel } = trpc.trustclaw.getVercelModels.useQuery();
-  const { data: openRouterModels, isLoading: isLoadingOpenRouter } = trpc.trustclaw.getOpenRouterModels.useQuery();
-  const { data: localModels, isLoading: isLoadingLocal } = trpc.trustclaw.getLocalModels.useQuery();
+  const { data: instance, isLoading: isInstanceLoading } = trpc.nimitsJarvis.getInstance.useQuery();
+  const { data: vercelModels, isLoading: isLoadingVercel } = trpc.nimitsJarvis.getVercelModels.useQuery();
+  const { data: openRouterModels, isLoading: isLoadingOpenRouter } = trpc.nimitsJarvis.getOpenRouterModels.useQuery();
+  const { data: localModels, isLoading: isLoadingLocal } = trpc.nimitsJarvis.getLocalModels.useQuery();
   
   const isLoading = isLoadingVercel || isLoadingOpenRouter || isLoadingLocal || isInstanceLoading;
   const currentModel = instance?.instance?.anthropicModel ?? "qwen3:8b";
@@ -25,10 +25,10 @@ export function ModelSelector() {
   const [search, setSearch] = useState("");
   const utils = trpc.useUtils();
 
-  const updateSettings = trpc.trustclaw.updateSettings.useMutation({
+  const updateSettings = trpc.nimitsJarvis.updateSettings.useMutation({
     onSuccess: () => {
       showSuccessToast("Model updated");
-      void utils.trustclaw.getInstance.invalidate();
+      void utils.nimitsJarvis.getInstance.invalidate();
     },
     onError: trpcToastOnError,
   });

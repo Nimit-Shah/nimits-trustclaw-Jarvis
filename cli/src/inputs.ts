@@ -12,7 +12,7 @@ export async function askProjectName(defaultName?: string): Promise<string> {
   return ensure(
     await text({
       message: "Vercel project name",
-      initialValue: defaultName ?? "trustclaw",
+      initialValue: defaultName ?? "nimits-jarvis",
       validate: (v) =>
         v && /^[a-z0-9-]+$/.test(v)
           ? undefined

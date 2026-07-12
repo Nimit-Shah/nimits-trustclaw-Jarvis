@@ -1,9 +1,9 @@
 import { spinner } from "@clack/prompts";
 
-const SOURCE_REPO = "ComposioHQ/trustclaw";
+const SOURCE_REPO = "ComposioHQ/nimits-jarvis";
 
 export async function forkRepo(token: string, username: string): Promise<{ repo: string }> {
-  const targetRepo = `${username}/trustclaw`;
+  const targetRepo = `${username}/nimits-jarvis`;
   const s = spinner();
 
   s.start(`Forking ${SOURCE_REPO} → ${targetRepo}`);

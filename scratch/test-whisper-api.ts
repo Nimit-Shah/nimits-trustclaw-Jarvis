@@ -6,7 +6,7 @@ import path from "path";
 const execAsync = promisify(exec);
 
 async function main() {
-  const tmpDir = "/Users/ayunimusmac/trustclaw/tmp";
+  const tmpDir = "/Users/ayunimusmac/nimits-jarvis/tmp";
   if (!fs.existsSync(tmpDir)) {
     fs.mkdirSync(tmpDir, { recursive: true });
   }

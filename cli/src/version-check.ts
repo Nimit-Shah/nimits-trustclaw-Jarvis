@@ -20,7 +20,7 @@ async function readOwnVersion(): Promise<string | null> {
 }
 
 /**
- * Fetch the latest published version of @composio/trustclaw from npm with a
+ * Fetch the latest published version of @composio/nimits-jarvis from npm with a
  * short timeout so we never block the deploy on a slow network.
  */
 async function fetchLatestVersion(): Promise<string | null> {
@@ -28,7 +28,7 @@ async function fetchLatestVersion(): Promise<string | null> {
   const timer = setTimeout(() => controller.abort(), 2000);
   try {
     const res = await fetch(
-      "https://registry.npmjs.org/-/package/@composio/trustclaw/dist-tags",
+      "https://registry.npmjs.org/-/package/@composio/nimits-jarvis/dist-tags",
       { signal: controller.signal },
     );
     if (!res.ok) return null;
@@ -54,7 +54,7 @@ function compareVersions(a: string, b: string): number {
 
 /**
  * Warn (don't block) if the user is running a stale version of the CLI.
- * `npx @composio/trustclaw` should fetch the latest, but cached/global
+ * `npx @composio/nimits-jarvis` should fetch the latest, but cached/global
  * installs can drift, and old versions miss bug fixes.
  */
 export async function warnIfOutdated(): Promise<void> {
@@ -65,7 +65,7 @@ export async function warnIfOutdated(): Promise<void> {
   if (!current || !latest) return;
   if (compareVersions(current, latest) >= 0) return;
   log.warn(
-    `You're running @composio/trustclaw@${current}, but ${latest} is available.\n` +
-      `Run \`npx @composio/trustclaw@latest deploy\` to use the latest.`,
+    `You're running @composio/nimits-jarvis@${current}, but ${latest} is available.\n` +
+      `Run \`npx @composio/nimits-jarvis@latest deploy\` to use the latest.`,
   );
 }

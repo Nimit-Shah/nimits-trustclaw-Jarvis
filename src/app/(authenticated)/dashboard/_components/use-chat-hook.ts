@@ -39,10 +39,10 @@ export function useChatHook({ initialMessages, streamId }: {
     transport,
     resume: streamId !== null,
     onFinish: () => {
-      void utils.trustclaw.getHistory.invalidate();
+      void utils.nimitsJarvis.getHistory.invalidate();
     },
     onError: () => {
-      void utils.trustclaw.getHistory.invalidate();
+      void utils.nimitsJarvis.getHistory.invalidate();
     },
   });
 

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { trpc } from "~/clients/trpc";
 import { useChatHook } from "./use-chat-hook";
 import type { UIMessage } from "@ai-sdk/react";
-import { TrustClawChatSkeleton } from "./chat/trustclaw-chat.skeleton";
+import { NimitsJarvisChatSkeleton } from "./chat/nimits-jarvis-chat.skeleton";
 
 type ChatContextType = ReturnType<typeof useChatHook> & {
   historyPageCount: number;
@@ -17,14 +17,14 @@ type ChatContextType = ReturnType<typeof useChatHook> & {
 const ChatContext = createContext<ChatContextType | null>(null);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const historyQuery = trpc.trustclaw.getHistory.useInfiniteQuery(
+  const historyQuery = trpc.nimitsJarvis.getHistory.useInfiniteQuery(
     { limit: 10 },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     },
   );
 
-  const streamingQuery = trpc.trustclaw.getStreamingMessage.useQuery(
+  const streamingQuery = trpc.nimitsJarvis.getStreamingMessage.useQuery(
     undefined,
     {
       refetchOnWindowFocus: "always",
@@ -35,7 +35,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     // Only shows on initial hard load. Client navigations keep data cached.
     return (
       <div className="flex h-full w-full flex-col">
-        <TrustClawChatSkeleton />
+        <NimitsJarvisChatSkeleton />
       </div>
     );
   }

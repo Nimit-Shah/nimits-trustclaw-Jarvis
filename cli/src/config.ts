@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 
-const CONFIG_FILE = ".trustclaw-deploy.json";
+const CONFIG_FILE = ".nimits-jarvis-deploy.json";
 
 export interface DeployConfig {
   vercelProjectName?: string;

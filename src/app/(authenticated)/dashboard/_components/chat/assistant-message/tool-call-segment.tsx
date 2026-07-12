@@ -46,7 +46,7 @@ export function ToolCallSegment({
 
   const allToolkits = connectionActions.map((a) => a.toolkit);
 
-  const connectionStatus = trpc.trustclaw.checkConnectionStatus.useQuery(
+  const connectionStatus = trpc.nimitsJarvis.checkConnectionStatus.useQuery(
     { toolkits: allToolkits },
     {
       enabled: allToolkits.length > 0,

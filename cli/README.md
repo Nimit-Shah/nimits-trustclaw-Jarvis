@@ -1,13 +1,13 @@
-# @composio/trustclaw
+# @composio/nimits-jarvis
 
-One-command deploy for [TrustClaw](https://github.com/ComposioHQ/trustclaw) on Vercel.
+One-command deploy for [NimitsJarvis](https://github.com/ComposioHQ/nimits-jarvis) on Vercel.
 
 ## Usage
 
 ```bash
-git clone https://github.com/ComposioHQ/trustclaw && cd trustclaw
+git clone https://github.com/ComposioHQ/nimits-jarvis && cd nimits-jarvis
 pnpm install
-npx @composio/trustclaw deploy
+npx @composio/nimits-jarvis deploy
 ```
 
 The CLI handles the entire deploy:
@@ -31,4 +31,4 @@ The CLI handles the entire deploy:
 
 ## License
 
-MIT - see the [main repo](https://github.com/ComposioHQ/trustclaw) for the LICENSE.
+MIT - see the [main repo](https://github.com/ComposioHQ/nimits-jarvis) for the LICENSE.

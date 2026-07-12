@@ -40,7 +40,7 @@ interface CreateProjectArgs {
   token: string;
   teamId: string | null;
   projectName: string;
-  githubRepoSlug: string; // "username/trustclaw"
+  githubRepoSlug: string; // "username/nimits-jarvis"
   githubToken: string;
 }
 

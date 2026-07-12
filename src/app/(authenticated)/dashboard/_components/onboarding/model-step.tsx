@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { cn } from "~/lib/utils";
 import type { z } from "zod";
-import { allowedAnthropicModelSchema } from "~/server/api/routers/trustclaw/createInstance.schema";
+import { allowedAnthropicModelSchema } from "~/server/api/routers/nimits-jarvis/createInstance.schema";
 import { MODELS } from "./onboarding.consts";
 import { StepLayout, itemVariants } from "./step-layout";
 

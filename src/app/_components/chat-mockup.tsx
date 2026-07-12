@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { CheckCircle2, Wrench } from "lucide-react";
-import { TrustClawBrand } from "./trustclaw-brand";
+import { NimitsJarvisBrand } from "./nimits-jarvis-brand";
 
 function ToolBadge({
   name,
@@ -142,7 +142,7 @@ export function ChatMockup() {
     >
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
         <div className="border-b border-border px-4 py-3">
-          <TrustClawBrand size="sm" />
+          <NimitsJarvisBrand size="sm" />
         </div>
 
         <div className="flex flex-col gap-2.5 p-4">

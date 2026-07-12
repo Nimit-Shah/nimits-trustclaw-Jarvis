@@ -4,7 +4,7 @@ import { Prisma } from "~/generated/prisma/client";
 import { z } from "zod";
 import { env } from "~/env";
 import { db } from "~/server/clients/db";
-import { computeNextRunSafe } from "~/server/api/routers/trustclaw/agent/tools/cron-utils";
+import { computeNextRunSafe } from "~/server/api/routers/nimits-jarvis/agent/tools/cron-utils";
 
 const LOCK_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -141,7 +141,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const executeUrl = `${env.NEXT_PUBLIC_APP_URL}/api/cron/trustclaw/execute`;
+  const executeUrl = `${env.NEXT_PUBLIC_APP_URL}/api/cron/nimits-jarvis/execute`;
 
   const entries = Array.from(jobsByInstance.entries());
   const results = await Promise.allSettled(

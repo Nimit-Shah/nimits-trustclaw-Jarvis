@@ -19,7 +19,7 @@ import { getVercelModels } from "./getVercelModels";
 import { getOpenRouterModels } from "./getOpenRouterModels";
 import { getLocalModels } from "./getLocalModels";
 
-export const trustclawRouter = router({
+export const nimitsJarvisRouter = router({
   getInstance,
   getStatus,
   createInstance,

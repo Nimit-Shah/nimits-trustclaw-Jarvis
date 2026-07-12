@@ -1,5 +1,5 @@
-import { TrustClawChatSkeleton } from "./_components/chat/trustclaw-chat.skeleton";
+import { NimitsJarvisChatSkeleton } from "./_components/chat/nimits-jarvis-chat.skeleton";
 
 export default function Loading() {
-  return <TrustClawChatSkeleton />;
+  return <NimitsJarvisChatSkeleton />;
 }

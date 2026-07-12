@@ -8,7 +8,7 @@ import { trpc } from "~/clients/trpc";
 import { showTrpcErrorToast } from "~/components/core/toast-notifications";
 import { ErrorBoundary } from "~/components/core/error-boundary";
 import { Button } from "~/components/ui/button";
-import { allowedAnthropicModelSchema } from "~/server/api/routers/trustclaw/createInstance.schema";
+import { allowedAnthropicModelSchema } from "~/server/api/routers/nimits-jarvis/createInstance.schema";
 import {
   STEP_ORDER,
   WRITING_STYLES,
@@ -129,16 +129,16 @@ export function Onboarding({
 
   const utils = trpc.useUtils();
 
-  const { data: statusData } = trpc.trustclaw.getStatus.useQuery();
+  const { data: statusData } = trpc.nimitsJarvis.getStatus.useQuery();
   const telegramConfigured = statusData?.telegramConfigured ?? true;
 
-  const createInstance = trpc.trustclaw.createInstance.useMutation({
+  const createInstance = trpc.nimitsJarvis.createInstance.useMutation({
     onSuccess: () => {
-      void utils.trustclaw.getInstance.invalidate();
+      void utils.nimitsJarvis.getInstance.invalidate();
     },
   });
 
-  const saveState = trpc.trustclaw.saveOnboardingState.useMutation();
+  const saveState = trpc.nimitsJarvis.saveOnboardingState.useMutation();
 
   const persistState = async (
     nextStep: Step,
@@ -214,7 +214,7 @@ export function Onboarding({
                 Setting things up...
               </h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Creating your TrustClaw instance and connecting tools
+                Creating your NimitsJarvis instance and connecting tools
               </p>
             </motion.div>
             {createInstance.isError && (

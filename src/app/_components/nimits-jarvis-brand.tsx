@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-interface TrustClawBrandProps {
+interface NimitsJarvisBrandProps {
   size?: "sm" | "md" | "lg";
   logoLink?: string;
 }
@@ -14,7 +14,7 @@ const SIZES = {
   lg: { logo: 48, text: "text-2xl" },
 } as const;
 
-export function TrustClawBrand({ size = "md", logoLink }: TrustClawBrandProps) {
+export function NimitsJarvisBrand({ size = "md", logoLink }: NimitsJarvisBrandProps) {
   const s = SIZES[size];
 
   const logo = (

@@ -2,6 +2,6 @@
 
 import { ChatView } from "./chat-view";
 
-export function TrustClawChat() {
+export function NimitsJarvisChat() {
   return <ChatView />;
 }

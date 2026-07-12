@@ -43,7 +43,7 @@ export const env = createEnv({
 
     // Cron auth. Required in production so unauthenticated callers can't hit
     // /api/cron/* endpoints. Vercel auto-injects this when crons are configured
-    // in vercel.json; the trustclaw deploy CLI also generates one on first deploy.
+    // in vercel.json; the nimits-jarvis deploy CLI also generates one on first deploy.
     CRON_SECRET: z.string(),
 
     // Ollama (local)

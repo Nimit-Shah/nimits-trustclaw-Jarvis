@@ -1,16 +1,16 @@
 import { trpcServer, HydrateClient } from "~/clients/trpc/server";
 import { ErrorBoundary } from "~/components/core/error-boundary";
-import { TrustClawChat } from "./_components/chat/trustclaw-chat";
+import { NimitsJarvisChat } from "./_components/chat/nimits-jarvis-chat";
 import { OnboardingClient } from "./_components/onboarding/onboarding-client";
 
 export default async function Page() {
-  void trpcServer.api.trustclaw.getHistory.prefetchInfinite({ limit: 10 });
-  void trpcServer.api.trustclaw.getStreamingMessage.prefetch();
+  void trpcServer.api.nimitsJarvis.getHistory.prefetchInfinite({ limit: 10 });
+  void trpcServer.api.nimitsJarvis.getStreamingMessage.prefetch();
 
-  const status = await trpcServer.api.trustclaw.getStatus();
+  const status = await trpcServer.api.nimitsJarvis.getStatus();
 
   if (!status.hasInstance) {
-    void trpcServer.api.trustclaw.getInstance.prefetch();
+    void trpcServer.api.nimitsJarvis.getInstance.prefetch();
 
     return (
       <HydrateClient>
@@ -27,7 +27,7 @@ export default async function Page() {
   return (
     <HydrateClient>
       <ErrorBoundary>
-        <TrustClawChat />
+        <NimitsJarvisChat />
       </ErrorBoundary>
     </HydrateClient>
   );

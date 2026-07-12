@@ -1,5 +1,5 @@
 {
-  "name": "trustclaw",
+  "name": "nimits-jarvis",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,10 +8,10 @@
   "author": "Composio <sarah@composio.dev>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ComposioHQ/trustclaw.git"
+    "url": "git+https://github.com/ComposioHQ/nimits-jarvis.git"
   },
-  "homepage": "https://github.com/ComposioHQ/trustclaw#readme",
-  "bugs": "https://github.com/ComposioHQ/trustclaw/issues",
+  "homepage": "https://github.com/ComposioHQ/nimits-jarvis#readme",
+  "bugs": "https://github.com/ComposioHQ/nimits-jarvis/issues",
   "keywords": [
     "ai-agent",
     "composio",

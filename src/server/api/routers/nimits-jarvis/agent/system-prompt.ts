@@ -225,7 +225,7 @@ const MESSAGING_GUIDELINES = `## Messaging Style
 
 const PII_ANONYMIZATION_PROTOCOL = `## PII & Anonymization Layer Protocol
 
-To preserve data privacy, all incoming contextual elements, tool data (such as emails, notifications, and logs), and inputs have been processed through the TrustClaw Anonymization Layer.
+To preserve data privacy, all incoming contextual elements, tool data (such as emails, notifications, and logs), and inputs have been processed through the NimitsJarvis Anonymization Layer.
 
 1. Identifiers are replaced by explicit tokens: \`[EMAIL_1]\`, \`[PHONE_2]\`, \`[PERSON_NAME_3]\`, \`[API_KEY_1]\`, \`[SSN_1]\`, \`[CREDIT_CARD_1]\`, \`[IP_ADDRESS_1]\`, \`[ADDRESS_1]\`, etc.
 2. Treat these tokens as valid literal inputs. Never attempt to guess, expand, or assume the underlying raw values behind these tokens.
@@ -257,7 +257,7 @@ The user is speaking to you using voice. Your response will be read aloud by a t
 export function buildSystemPrompt(params: SystemPromptParams): string {
   const sections: string[] = [];
 
-  sections.push("# TrustClaw Agent");
+  sections.push("# NimitsJarvis Agent");
 
   if (params.soulPrompt) {
     sections.push(params.soulPrompt);

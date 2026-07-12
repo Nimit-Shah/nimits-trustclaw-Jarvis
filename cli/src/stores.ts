@@ -33,7 +33,7 @@ interface ConnectionStrings {
 async function ensureVercelLinkDir(args: ProvisionArgs): Promise<string> {
   const linkDir = join(
     process.env.TMPDIR ?? "/tmp",
-    `trustclaw-deploy-${args.projectId}`,
+    `nimits-jarvis-deploy-${args.projectId}`,
   );
   await mkdir(join(linkDir, ".vercel"), { recursive: true });
   await writeFile(
@@ -201,7 +201,7 @@ async function provisionPostgres(args: ProvisionArgs): Promise<string> {
   const result = await addIntegration({
     cwd: linkDir,
     integrationSlug: "neon",
-    resourceName: "trustclaw-postgres",
+    resourceName: "nimits-jarvis-postgres",
     plan: "free_v3",
   });
 
@@ -263,7 +263,7 @@ async function provisionRedis(args: ProvisionArgs): Promise<string> {
   const result = await addIntegration({
     cwd: linkDir,
     integrationSlug: "redis",
-    resourceName: "trustclaw-redis",
+    resourceName: "nimits-jarvis-redis",
   });
 
   if (!result.ok && !result.needsBrowser) {

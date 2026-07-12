@@ -1,6 +1,6 @@
 import { Skeleton } from "~/components/ui/skeleton";
 
-export function TrustClawChatSkeleton() {
+export function NimitsJarvisChatSkeleton() {
   return (
     <div className="relative flex h-full overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col">

@@ -1,10 +1,10 @@
-# TrustClaw Agent
+# NimitsJarvis Agent
 
 ## Overview
 
-This is the AI agent runtime for TrustClaw. It orchestrates Anthropic Claude calls with Composio tools (external service integrations) and custom tools (memory, scheduling), while managing the context window through a 3-layer system adapted from [pi-mono](https://github.com/nicholasgasior/pi-mono) and [OpenClaw](https://github.com/nicholasgasior/openclaw).
+This is the AI agent runtime for NimitsJarvis. It orchestrates Anthropic Claude calls with Composio tools (external service integrations) and custom tools (memory, scheduling), while managing the context window through a 3-layer system adapted from [pi-mono](https://github.com/nicholasgasior/pi-mono) and [OpenClaw](https://github.com/nicholasgasior/openclaw).
 
-Entry point: `prepareAgentRun()` in `setup.ts`, consumed by `app/api/chat/route.ts` (web), `app/api/telegram-webhook/route.ts`, and `app/api/cron/trustclaw/execute/route.ts`.
+Entry point: `prepareAgentRun()` in `setup.ts`, consumed by `app/api/chat/route.ts` (web), `app/api/telegram-webhook/route.ts`, and `app/api/cron/nimits-jarvis/execute/route.ts`.
 
 ## Architecture
 
@@ -123,7 +123,7 @@ When real LLM usage is available (from `result.usage` after `streamText()`), tho
 ### Custom tools (always available)
 - **memory_save**: Persist a durable fact to the pgvector memory store
 - **memory_search**: Cosine-similarity search over memories
-- **schedule**: Create/list/delete cron jobs (see `../../../app/api/cron/trustclaw/CLAUDE.md`)
+- **schedule**: Create/list/delete cron jobs (see `../../../app/api/cron/nimits-jarvis/CLAUDE.md`)
 
 ### Composio tools (dynamic)
 Created per-session via `createComposioClient(apiKey).create(orgId).tools()`. These provide integrations with external services (Gmail, Slack, GitHub, etc.) based on the user's connected accounts.
@@ -176,4 +176,4 @@ The compaction system is adapted from two open-source projects. All prompts and 
 |------|---------|
 | `app/api/chat/route.ts` | `prepareAgentRun` - web streaming via `agent.stream()` |
 | `app/api/telegram-webhook/route.ts` | `prepareAgentRun` - telegram via `agent.generate()` |
-| `app/api/cron/trustclaw/execute/route.ts` | `prepareAgentRun`, `computeNextRunAt` - cron via `agent.generate()` |
+| `app/api/cron/nimits-jarvis/execute/route.ts` | `prepareAgentRun`, `computeNextRunAt` - cron via `agent.generate()` |

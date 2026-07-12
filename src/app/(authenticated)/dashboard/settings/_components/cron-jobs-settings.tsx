@@ -51,24 +51,24 @@ export function CronJobsSettings() {
   const utils = trpc.useUtils();
 
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    trpc.trustclaw.getCronJobs.useInfiniteQuery(
+    trpc.nimitsJarvis.getCronJobs.useInfiniteQuery(
       { limit: 20 },
       { getNextPageParam: (lastPage) => lastPage.nextCursor },
     );
 
   const cronJobs = data?.pages.flatMap((page) => page.items) ?? [];
 
-  const toggleCronJob = trpc.trustclaw.toggleCronJob.useMutation({
+  const toggleCronJob = trpc.nimitsJarvis.toggleCronJob.useMutation({
     onSuccess: () => {
-      void utils.trustclaw.getCronJobs.invalidate();
+      void utils.nimitsJarvis.getCronJobs.invalidate();
     },
     onError: trpcToastOnError,
   });
 
-  const deleteCronJob = trpc.trustclaw.deleteCronJob.useMutation({
+  const deleteCronJob = trpc.nimitsJarvis.deleteCronJob.useMutation({
     onSuccess: () => {
       showSuccessToast("Cron job deleted");
-      void utils.trustclaw.getCronJobs.invalidate();
+      void utils.nimitsJarvis.getCronJobs.invalidate();
     },
     onError: trpcToastOnError,
   });

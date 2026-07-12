@@ -27,10 +27,10 @@ export function ModelSettings({
   const [openRouterEnabled, setOpenRouterEnabled] = useState(openRouterGatewayEnabled);
   const utils = trpc.useUtils();
 
-  const updateSettings = trpc.trustclaw.updateSettings.useMutation({
+  const updateSettings = trpc.nimitsJarvis.updateSettings.useMutation({
     onSuccess: () => {
       showSuccessToast("Settings updated");
-      void utils.trustclaw.getInstance.invalidate();
+      void utils.nimitsJarvis.getInstance.invalidate();
     },
     onError: trpcToastOnError,
   });

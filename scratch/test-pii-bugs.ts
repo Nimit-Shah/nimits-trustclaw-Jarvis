@@ -1,6 +1,6 @@
-import { scanForPII, extractStructuredPII } from "../src/server/api/routers/trustclaw/agent/pii/pii-scanner";
-import { PIIVault } from "../src/server/api/routers/trustclaw/agent/pii/pii-tokenizer";
-import { PIITransportShield } from "../src/server/api/routers/trustclaw/agent/pii/pii-transport-shield";
+import { scanForPII, extractStructuredPII } from "../src/server/api/routers/nimits-jarvis/agent/pii/pii-scanner";
+import { PIIVault } from "../src/server/api/routers/nimits-jarvis/agent/pii/pii-tokenizer";
+import { PIITransportShield } from "../src/server/api/routers/nimits-jarvis/agent/pii/pii-transport-shield";
 
 function runTests() {
   console.log("--- Test 1: Identity Pattern in Plain Text ---");

@@ -120,7 +120,7 @@ export async function resolveComposioApiKey(): Promise<string> {
   // Run `composio dev init -y` in a throwaway directory so we don't pollute
   // the user's repo with .composio/ and .env.local files. The command picks
   // the default org project and writes COMPOSIO_API_KEY=ak_<...> to .env.local.
-  const workDir = join(tmpdir(), `trustclaw-composio-${Date.now()}`);
+  const workDir = join(tmpdir(), `nimits-jarvis-composio-${Date.now()}`);
   await mkdir(workDir, { recursive: true });
 
   try {

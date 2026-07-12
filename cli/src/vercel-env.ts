@@ -114,7 +114,7 @@ export async function lookupExistingProject(args: {
 }
 
 /**
- * Fetch the canonical production alias for a project (e.g. "trustclaw.vercel.app")
+ * Fetch the canonical production alias for a project (e.g. "nimits-jarvis.vercel.app")
  * from the project's targets.production.alias list. Picks the shortest alias since
  * Vercel returns multiple variants and the shortest is the stable one.
  *

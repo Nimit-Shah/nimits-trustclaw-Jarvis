@@ -20,7 +20,7 @@ const PRO_TRPC_MAX_DURATION_MS = 270_000;
 
 const ROUTE_FILES_WITH_MAX_DURATION = [
   "src/app/api/chat/route.ts",
-  "src/app/api/cron/trustclaw/execute/route.ts",
+  "src/app/api/cron/nimits-jarvis/execute/route.ts",
   "src/app/api/telegram-webhook/route.ts",
   "src/app/api/trpc/[trpc]/route.ts",
 ];

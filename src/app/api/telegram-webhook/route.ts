@@ -4,9 +4,9 @@ import { env } from "~/env";
 import { db } from "~/server/clients/db";
 import { sendTelegramMessage, sendChatAction } from "~/server/clients/telegram";
 import { rateLimit } from "~/server/clients/rate-limit";
-import { prepareAgentRun } from "~/server/api/routers/trustclaw/agent/setup";
-import { stripToolResultEchoes } from "~/server/api/routers/trustclaw/agent/strip-tool-echoes";
-import { toPlainRecordSafe } from "~/server/api/routers/trustclaw/agent/context/build-context";
+import { prepareAgentRun } from "~/server/api/routers/nimits-jarvis/agent/setup";
+import { stripToolResultEchoes } from "~/server/api/routers/nimits-jarvis/agent/strip-tool-echoes";
+import { toPlainRecordSafe } from "~/server/api/routers/nimits-jarvis/agent/context/build-context";
 import { parseManageConnectionsResult } from "~/app/(authenticated)/dashboard/_components/tool-results/connections/schema";
 import {
   claimTelegramUpdate,
@@ -114,7 +114,7 @@ async function handleStartCommand(chatId: string, text: string): Promise<void> {
   if (!token) {
     await sendTelegramMessage(
       chatId,
-      `Welcome! To link your TrustClaw agent, use the link from ${env.NEXT_PUBLIC_APP_URL}/dashboard/settings.`,
+      `Welcome! To link your NimitsJarvis agent, use the link from ${env.NEXT_PUBLIC_APP_URL}/dashboard/settings.`,
     );
     return;
   }
@@ -142,7 +142,7 @@ async function handleStartCommand(chatId: string, text: string): Promise<void> {
 
   await sendTelegramMessage(
     chatId,
-    "Linked! I'm your TrustClaw by Composio agent. Send me a message anytime.",
+    "Linked! I'm your NimitsJarvis by Composio agent. Send me a message anytime.",
   );
 }
 

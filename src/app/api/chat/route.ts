@@ -2,8 +2,8 @@ import { smoothStream, UI_MESSAGE_STREAM_HEADERS } from "ai";
 import { z } from "zod";
 import { auth } from "~/server/auth";
 import { db } from "~/server/clients/db";
-import { prepareAgentRun } from "~/server/api/routers/trustclaw/agent/setup";
-import type { PIIVault } from "~/server/api/routers/trustclaw/agent/pii";
+import { prepareAgentRun } from "~/server/api/routers/nimits-jarvis/agent/setup";
+import type { PIIVault } from "~/server/api/routers/nimits-jarvis/agent/pii";
 import {
   setStreamingMessage,
   getStreamingMessage,

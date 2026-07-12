@@ -101,7 +101,7 @@ function AiProfileSection({
 }
 
 export function MemorySettings() {
-  const { data, isLoading, refetch, isFetching } = trpc.trustclaw.getMemories.useQuery({
+  const { data, isLoading, refetch, isFetching } = trpc.nimitsJarvis.getMemories.useQuery({
     limit: 50,
   });
 

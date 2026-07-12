@@ -2,7 +2,7 @@
 
 ## Product overview
 
-TrustClaw - a self-hostable personal AI agent with vector memory, Composio tools, and a Telegram bot.
+NimitsJarvis - a self-hostable personal AI agent with vector memory, Composio tools, and a Telegram bot.
 
 ## Tech Stack
 
@@ -87,7 +87,7 @@ src/
     │   ├── trpc.ts               # Procedure definitions
     │   ├── root.ts               # Root router
     │   └── routers/
-    │       └── trustclaw/
+    │       └── nimits-jarvis/
     │           ├── index.ts              # Router definition
     │           ├── <procedure>.ts        # Procedure implementation
     │           └── <procedure>.schema.ts # Zod schemas (input, output)

@@ -32,7 +32,7 @@ export function TelegramSettings() {
     };
   }, []);
 
-  const linkTelegram = trpc.trustclaw.linkTelegram.useMutation({
+  const linkTelegram = trpc.nimitsJarvis.linkTelegram.useMutation({
     onError: trpcToastOnError,
   });
 
@@ -44,7 +44,7 @@ export function TelegramSettings() {
   // value. Derive isLinked directly from the query so we don't have to mirror
   // server state into local useState (the prior implementation did and needed
   // a useEffect to keep the two in sync — classic anti-pattern).
-  const { data: instanceData } = trpc.trustclaw.getInstance.useQuery(undefined, {
+  const { data: instanceData } = trpc.nimitsJarvis.getInstance.useQuery(undefined, {
     refetchInterval: telegramToken ? 3000 : false,
   });
   const isLinked = !!instanceData?.instance?.telegramChatId;
@@ -58,11 +58,11 @@ export function TelegramSettings() {
     }
   }, [isLinked, telegramToken, linkTelegram]);
 
-  const unlinkTelegram = trpc.trustclaw.unlinkTelegram.useMutation({
+  const unlinkTelegram = trpc.nimitsJarvis.unlinkTelegram.useMutation({
     onSuccess: () => {
       showSuccessToast("Telegram unlinked");
       linkTelegram.reset();
-      void utils.trustclaw.getInstance.invalidate();
+      void utils.nimitsJarvis.getInstance.invalidate();
     },
     onError: trpcToastOnError,
   });
@@ -81,7 +81,7 @@ export function TelegramSettings() {
       <CardHeader>
         <CardTitle>Telegram</CardTitle>
         <CardDescription>
-          Chat with TrustClaw from Telegram - messages sync with the
+          Chat with NimitsJarvis from Telegram - messages sync with the
           dashboard
         </CardDescription>
       </CardHeader>
@@ -109,7 +109,7 @@ export function TelegramSettings() {
                 </Button>
               }
               title="Unlink Telegram"
-              description="This will disconnect Telegram from your TrustClaw instance. You can re-link it later."
+              description="This will disconnect Telegram from your NimitsJarvis instance. You can re-link it later."
               confirmLabel="Unlink"
               onConfirm={() => void unlinkTelegram.mutateAsync()}
               isPending={unlinkTelegram.isPending}

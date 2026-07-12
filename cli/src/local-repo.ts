@@ -68,7 +68,7 @@ export async function detectLocalRepo(): Promise<LocalRepoInfo | null> {
 
     const pkgRaw = await readFile(join(rootDir, "package.json"), "utf-8");
     const pkg = JSON.parse(pkgRaw) as { name?: string };
-    if (pkg.name !== "trustclaw") return null;
+    if (pkg.name !== "nimits-jarvis") return null;
 
     const { stdout: branchRaw } = await runGit(
       ["rev-parse", "--abbrev-ref", "HEAD"],
@@ -134,7 +134,7 @@ export async function publishLocalCopy(args: PublishArgs): Promise<{ repo: strin
         name: repoName,
         private: true,
         auto_init: false,
-        description: "Self-hosted trustclaw deployment",
+        description: "Self-hosted nimits-jarvis deployment",
       }),
     });
 
@@ -148,7 +148,7 @@ export async function publishLocalCopy(args: PublishArgs): Promise<{ repo: strin
   s.message(`Pushing local ${currentBranch} → ${targetRepo}:main`);
   const remoteUrl = `https://x-access-token:${token}@github.com/${targetRepo}.git`;
   // Use a temp remote name to avoid clobbering the user's existing remotes.
-  const remoteName = `trustclaw-deploy-${Date.now()}`;
+  const remoteName = `nimits-jarvis-deploy-${Date.now()}`;
 
   try {
     await runGit(["remote", "add", remoteName, remoteUrl], { cwd: rootDir });
@@ -169,7 +169,7 @@ export async function publishLocalCopy(args: PublishArgs): Promise<{ repo: strin
 
 /**
  * Clone a GitHub repo to a temp dir using token-based auth. Used by the fork
- * deploy path (`pnpm dlx @composio/trustclaw deploy` from a non-trustclaw
+ * deploy path (`pnpm dlx @composio/nimits-jarvis deploy` from a non-nimits-jarvis
  * directory) so we have a local checkout to run prisma migrations against.
  *
  * Returns the absolute path to the clone.
@@ -179,7 +179,7 @@ export async function cloneForkLocally(args: {
   token: string;
 }): Promise<string> {
   const { repoSlug, token } = args;
-  const targetDir = join(tmpdir(), `trustclaw-fork-${Date.now()}`);
+  const targetDir = join(tmpdir(), `nimits-jarvis-fork-${Date.now()}`);
   await mkdir(targetDir, { recursive: true });
 
   const s = spinner();
@@ -204,7 +204,7 @@ export async function confirmLocalPublish(
   repoName: string;
 } | null> {
   log.info(
-    `Detected local trustclaw checkout at ${info.rootDir} (branch: ${info.currentBranch})`,
+    `Detected local nimits-jarvis checkout at ${info.rootDir} (branch: ${info.currentBranch})`,
   );
 
   if (info.hasUncommittedChanges) {
@@ -224,7 +224,7 @@ export async function confirmLocalPublish(
 
   // If we already have a cached repo name from a prior run, skip both the
   // "Publish?" confirm and the name prompt - the user clearly opted into the
-  // publish flow before. Edit `.trustclaw-deploy.json` to change the repo
+  // publish flow before. Edit `.nimits-jarvis-deploy.json` to change the repo
   // name, or delete it to get the prompts back.
   if (defaultRepoName) {
     log.info(`Using cached GitHub repo: ${defaultRepoName}`);
@@ -245,7 +245,7 @@ export async function confirmLocalPublish(
 
   const repoName = await text({
     message: "GitHub repo name (will be created as private under your account)",
-    initialValue: "trustclaw",
+    initialValue: "nimits-jarvis",
     validate: (v) =>
       v && /^[a-zA-Z0-9._-]+$/.test(v)
         ? undefined

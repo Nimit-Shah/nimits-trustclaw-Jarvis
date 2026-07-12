@@ -1,10 +1,10 @@
 {
-  "name": "@composio/trustclaw",
+  "name": "@composio/nimits-jarvis",
   "version": "0.3.3",
-  "description": "One-command deploy for TrustClaw on Vercel",
+  "description": "One-command deploy for NimitsJarvis on Vercel",
   "type": "module",
   "bin": {
-    "trustclaw": "./dist/bin.js"
+    "nimits-jarvis": "./dist/bin.js"
   },
   "files": [
     "dist"
@@ -16,13 +16,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ComposioHQ/trustclaw.git",
+    "url": "git+https://github.com/ComposioHQ/nimits-jarvis.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/ComposioHQ/trustclaw#readme",
-  "bugs": "https://github.com/ComposioHQ/trustclaw/issues",
+  "homepage": "https://github.com/ComposioHQ/nimits-jarvis#readme",
+  "bugs": "https://github.com/ComposioHQ/nimits-jarvis/issues",
   "keywords": [
-    "trustclaw",
+    "nimits-jarvis",
     "composio",
     "ai-agent",
     "vercel",

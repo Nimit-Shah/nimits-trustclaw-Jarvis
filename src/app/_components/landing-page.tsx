@@ -5,7 +5,7 @@ import { SecuritySection } from "./security-section";
 import { ComparisonSection } from "./comparison-section";
 import { FloatingPromptsSection } from "./floating-prompts-section";
 import { BottomCtaSection } from "./bottom-cta-section";
-import { TrustClawBrand } from "./trustclaw-brand";
+import { NimitsJarvisBrand } from "./nimits-jarvis-brand";
 
 export function LandingPage() {
   return (
@@ -21,7 +21,7 @@ export function LandingPage() {
       </main>
       <footer className="border-border border-t px-4 py-6">
         <div className="flex justify-center">
-          <TrustClawBrand size="sm" />
+          <NimitsJarvisBrand size="sm" />
         </div>
       </footer>
     </div>

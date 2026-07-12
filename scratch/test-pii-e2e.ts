@@ -11,8 +11,8 @@
  * Run: pnpm exec tsx --env-file=.env scratch/test-pii-e2e.ts
  */
 
-import { PIIVault, PIITransportShield } from "../src/server/api/routers/trustclaw/agent/pii";
-import { scanForPII, extractStructuredPII } from "../src/server/api/routers/trustclaw/agent/pii";
+import { PIIVault, PIITransportShield } from "../src/server/api/routers/nimits-jarvis/agent/pii";
+import { scanForPII, extractStructuredPII } from "../src/server/api/routers/nimits-jarvis/agent/pii";
 
 let passed = 0;
 let failed = 0;
