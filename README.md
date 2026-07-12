@@ -13,6 +13,7 @@ To run a robust, **24x7 personal agent** on your local machine using state-of-th
 * 🧠 **Multi-Gateway Intelligence:** Powered by local models (Ollama) or external cloud models via **OpenRouter** and **Vercel AI SDK**, offering ultimate flexibility and choice.
 * 🎙 **Whisper Voice Mode:** Integrated speech-to-text dialogue mode using **Whisper** and a custom UI transport. The response engine is strictly optimized for text-to-speech rendering: enforced 2-sentence limits, preferred contractions, zero markdown/emojis, and muted internal tool states to prevent speech pollution.
 * 🧠 **Smart Memory Routing:** Logical routing decision rules within the system prompt determine when to query Postgres `pgvector` memory tools versus answering from LLM training data, eliminating unnecessary database lookup latency.
+* 🧠 **Mnemosyne Memory Integration:** A long-term memory sidecar built on top of the PII protection layer. It passively learns from interactions, builds a dual-write AI User Profile in `pgvector`, and retrieves relevant context automatically. **Advantage:** Grants the agent infinite long-term memory and extreme personalization by recalling nuanced user preferences across sessions, while ensuring that all memorized data remains fully sanitized by the underlying PII layer.
 * 🛡 **Robust PII Protection Layer:** When using cloud models, sensitive data (emails, phone numbers, names, LinkedIn Profile URLs, vanity name fields, and Uniform Resource Names/URNs) is automatically tokenized and redacted before leaving your network. Local models bypass this for speed.
 * 💾 **Semantic Memory:** Persistent memory storage using Postgres and `pgvector` with `384`-dimension vectors.
 * 💤 **Auto-Autopilot (Cron Jobs):** Schedule recurring background tasks (e.g. daily summaries, inbox cleaning, automated reports) that trigger the agent 24/7. Hardened against indirect prompt injection via context isolation.
@@ -43,10 +44,14 @@ To run a robust, **24x7 personal agent** on your local machine using state-of-th
  │                                 Local Machine / Server                                 │
  │                                                                                        │
  │ ┌────────────────────────┐         ┌────────────────────┐         ┌───────────────┐    │
- │ │     System Prompt      │         │   PII Anonymizer   │         │ Postgres DB   │    │
- │ │       Compiler         │◄───────▶│ (Regex & JSON Keys │◄───────▶│  (pgvector &  │    │
- │ │ (Memory Routing / XML) │         │  Redacts URNs/URLs)│         │  Memory Store)│    │
- │ └───────────┬────────────┘         └─────────┬──────────┘         └───────────────┘    │
+ │ │     System Prompt      │         │ Mnemosyne Sidecar  │         │ Postgres DB   │    │
+ │ │       Compiler         │◄───────▶│ (Long-Term Memory) │◄───────▶│  (pgvector &  │    │
+ │ │ (Memory Routing / XML) │         └─────────┬──────────┘         │ AI Profiles)  │    │
+ │ └───────────┬────────────┘         ┌─────────▼──────────┐         └───────────────┘    │
+ │             │                      │   PII Anonymizer   │                              │
+ │             │                      │ (Regex & JSON Keys │                              │
+ │             │                      │  Redacts URNs/URLs)│                              │
+ │             │                      └─────────┬──────────┘                              │
  │             │                                │                                         │
  │             │                       ┌────────┴────────┐                                │
  │             │                       ▼                 ▼                                │
