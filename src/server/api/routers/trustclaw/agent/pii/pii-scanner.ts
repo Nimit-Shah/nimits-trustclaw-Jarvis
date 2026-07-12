@@ -66,6 +66,10 @@ const URN_RE =
 const LINKEDIN_URL_RE =
   /https?:\/\/(?:www\.)?linkedin\.com\/(?:in|pub|company|school)\/[a-zA-Z0-9_-]+/gi;
 
+/** Known system identities/names */
+const IDENTITY_RE =
+  /\b(?:Nimit\s+Shah|Nimit|Jackson|Ayuni\s+Musmac|Ayuni|Musmac)\b/gi;
+
 /**
  * US street addresses. Heuristic: a number followed by words and a street suffix,
  * optionally followed by a 5-digit ZIP.
@@ -105,6 +109,7 @@ interface PatternEntry {
 const PATTERNS: PatternEntry[] = [
   // Order matters: more specific patterns first to prevent overlaps
   { type: "ssn", regex: SSN_RE },
+  { type: "identity", regex: IDENTITY_RE },
   { type: "email", regex: EMAIL_RE },
   { type: "api_key", regex: API_KEY_RE },
   { type: "linkedin_url", regex: LINKEDIN_URL_RE },
@@ -415,6 +420,13 @@ function isObviousNonPII(value: string): boolean {
   // Pure numbers
   if (/^\d+$/.test(value)) return true;
   // URLs (not PII themselves, though they may contain PII in query params)
-  if (/^https?:\/\//i.test(value)) return true;
+  // EXCEPT for known PII URL structures like LinkedIn profiles
+  if (/^https?:\/\//i.test(value)) {
+    // If it's a linkedin profile url, we DO NOT skip it
+    if (/(?:www\.)?linkedin\.com\/(?:in|pub|company|school)\/[a-zA-Z0-9_-]+/i.test(value)) {
+      return false;
+    }
+    return true;
+  }
   return false;
 }
