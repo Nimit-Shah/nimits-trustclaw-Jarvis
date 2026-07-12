@@ -56,6 +56,8 @@ export function SettingsPageClient() {
       <ErrorBoundary>
         <ModelSettings
           piiRedactionEnabled={instance.piiRedactionEnabled}
+          vercelGatewayEnabled={instance.vercelGatewayEnabled}
+          openRouterGatewayEnabled={instance.openRouterGatewayEnabled}
         />
       </ErrorBoundary>
 

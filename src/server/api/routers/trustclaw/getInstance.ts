@@ -18,6 +18,8 @@ export const getInstance = protectedProcedure
         userId: true,
         anthropicModel: true,
         piiRedactionEnabled: true,
+        vercelGatewayEnabled: true,
+        openRouterGatewayEnabled: true,
         telegramChatId: true,
         telegramLinkToken: true,
         telegramLinkTokenExpiresAt: true,

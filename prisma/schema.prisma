@@ -107,6 +107,10 @@ model ComposioClawInstance {
   // being sent to external LLMs and restored in the response.
   piiRedactionEnabled Boolean @default(true)
 
+  // API Gateways
+  vercelGatewayEnabled     Boolean @default(true)
+  openRouterGatewayEnabled Boolean @default(true)
+
   // Telegram linking
   telegramChatId             String?   @unique
   telegramLinkToken          String?   @unique

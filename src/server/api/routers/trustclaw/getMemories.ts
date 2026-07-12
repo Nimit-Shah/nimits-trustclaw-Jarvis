@@ -2,6 +2,38 @@ import { z } from "zod";
 import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
 import { getMemoriesInput, memoryRow } from "./getMemories.schema";
+import { env } from "~/env";
+
+const profileItem = z.object({
+  key: z.string(),
+  category: z.string(),
+  label: z.string(),
+  value: z.string(),
+  importance: z.number(),
+  updated_at: z.string(),
+});
+
+const mnemosyneProfileResponse = z.object({
+  profile: z.array(profileItem),
+  grouped: z.record(z.string(), z.array(profileItem)),
+  total: z.number(),
+});
+
+/**
+ * Fetch structured AI Profile from Mnemosyne sidecar.
+ * Returns null if sidecar is offline — callers handle gracefully.
+ */
+async function fetchMnemosyneProfile(): Promise<z.infer<typeof mnemosyneProfileResponse> | null> {
+  try {
+    const res = await fetch(`${env.MNEMOSYNE_URL}/profile`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return null;
+    return mnemosyneProfileResponse.parse(await res.json());
+  } catch {
+    return null;
+  }
+}
 
 export const getMemories = protectedProcedure
   .input(getMemoriesInput)
@@ -14,7 +46,7 @@ export const getMemories = protectedProcedure
     });
 
     if (!instance) {
-      return { items: [], nextCursor: undefined };
+      return { items: [], nextCursor: undefined, aiProfile: null };
     }
 
     const cursorDate = input.cursor ? new Date(input.cursor) : undefined;
@@ -37,8 +69,12 @@ export const getMemories = protectedProcedure
         ? sliced[sliced.length - 1]!.createdAt.toISOString()
         : undefined;
 
+    // Fetch AI Profile from Mnemosyne (non-blocking — returns null if offline)
+    const aiProfile = await fetchMnemosyneProfile();
+
     return {
       items,
       nextCursor,
+      aiProfile,
     };
   });

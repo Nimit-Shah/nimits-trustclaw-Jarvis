@@ -19,6 +19,8 @@ export const updateSettingsInput = z.object({
   anthropicModel: z.string().optional(),
   timezone: ianaTimezone.optional(),
   piiRedactionEnabled: z.boolean().optional(),
+  vercelGatewayEnabled: z.boolean().optional(),
+  openRouterGatewayEnabled: z.boolean().optional(),
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsInput>;

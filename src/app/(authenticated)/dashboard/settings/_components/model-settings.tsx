@@ -11,8 +11,20 @@ import {
   trpcToastOnError,
 } from "~/components/core/toast-notifications";
 
-export function ModelSettings({ piiRedactionEnabled }: { piiRedactionEnabled: boolean }) {
+export interface ModelSettingsProps {
+  piiRedactionEnabled: boolean;
+  vercelGatewayEnabled: boolean;
+  openRouterGatewayEnabled: boolean;
+}
+
+export function ModelSettings({
+  piiRedactionEnabled,
+  vercelGatewayEnabled,
+  openRouterGatewayEnabled,
+}: ModelSettingsProps) {
   const [piiEnabled, setPiiEnabled] = useState(piiRedactionEnabled);
+  const [vercelEnabled, setVercelEnabled] = useState(vercelGatewayEnabled);
+  const [openRouterEnabled, setOpenRouterEnabled] = useState(openRouterGatewayEnabled);
   const utils = trpc.useUtils();
 
   const updateSettings = trpc.trustclaw.updateSettings.useMutation({
@@ -54,6 +66,48 @@ export function ModelSettings({ piiRedactionEnabled }: { piiRedactionEnabled: bo
               onCheckedChange={(checked) => {
                 setPiiEnabled(checked);
                 void updateSettings.mutateAsync({ piiRedactionEnabled: checked });
+              }}
+              disabled={updateSettings.isPending}
+            />
+          </div>
+        </div>
+
+        {/* API Gateway Toggles */}
+        <div className="border-t pt-4 mt-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="vercel-gateway-toggle" className="text-sm font-semibold cursor-pointer">
+                Vercel AI Gateway
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Enable models routed through the Vercel AI Gateway (OpenAI, Anthropic, DeepSeek, Gemini, Meta, Mistral).
+              </p>
+            </div>
+            <Switch
+              id="vercel-gateway-toggle"
+              checked={vercelEnabled}
+              onCheckedChange={(checked) => {
+                setVercelEnabled(checked);
+                void updateSettings.mutateAsync({ vercelGatewayEnabled: checked });
+              }}
+              disabled={updateSettings.isPending}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="openrouter-gateway-toggle" className="text-sm font-semibold cursor-pointer">
+                OpenRouter Gateway
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Enable models routed through OpenRouter (provides access to thousands of open-source and proprietary models).
+              </p>
+            </div>
+            <Switch
+              id="openrouter-gateway-toggle"
+              checked={openRouterEnabled}
+              onCheckedChange={(checked) => {
+                setOpenRouterEnabled(checked);
+                void updateSettings.mutateAsync({ openRouterGatewayEnabled: checked });
               }}
               disabled={updateSettings.isPending}
             />

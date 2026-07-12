@@ -129,7 +129,7 @@ export function ChatInput({ onSend, onStop, status, voice }: ChatInputProps) {
                   variant="default"
                   size="icon"
                   className={cn(
-                    "size-8 rounded-xl bg-[#cc6b49] text-white hover:bg-[#b55c3c]",
+                    "size-8 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90",
                     !canSend && "opacity-50",
                   )}
                   onClick={handleSubmit}

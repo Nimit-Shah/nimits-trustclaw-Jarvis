@@ -55,6 +55,8 @@ export const env = createEnv({
     // Whisper local STT (optional — voice mode disabled when missing)
     WHISPER_BASE_URL: z.string().url().default("http://127.0.0.1:8081"),
     WHISPER_MODEL: z.string().default("large-v3-v20240930_626MB"),
+    // Mnemosyne local sidecar
+    MNEMOSYNE_URL: z.string().url().default("http://127.0.0.1:3999"),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
@@ -85,6 +87,7 @@ export const env = createEnv({
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     WHISPER_BASE_URL: process.env.WHISPER_BASE_URL,
     WHISPER_MODEL: process.env.WHISPER_MODEL,
+    MNEMOSYNE_URL: process.env.MNEMOSYNE_URL,
 
     // Client URL resolution:
     //  - dev: derive from PORT so `PORT=3001 pnpm dev` just works

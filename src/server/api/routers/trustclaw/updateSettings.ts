@@ -27,11 +27,19 @@ export const updateSettings = protectedProcedure
           ...(input.piiRedactionEnabled !== undefined && {
             piiRedactionEnabled: input.piiRedactionEnabled,
           }),
+          ...(input.vercelGatewayEnabled !== undefined && {
+            vercelGatewayEnabled: input.vercelGatewayEnabled,
+          }),
+          ...(input.openRouterGatewayEnabled !== undefined && {
+            openRouterGatewayEnabled: input.openRouterGatewayEnabled,
+          }),
         },
         select: {
           id: true,
           anthropicModel: true,
           piiRedactionEnabled: true,
+          vercelGatewayEnabled: true,
+          openRouterGatewayEnabled: true,
           updatedAt: true,
         },
       }),

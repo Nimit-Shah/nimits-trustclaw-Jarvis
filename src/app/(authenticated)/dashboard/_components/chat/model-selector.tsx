@@ -60,7 +60,10 @@ export function ModelSelector() {
       });
     }
 
-    if (vercelModels && vercelModels.length > 0) {
+    const vercelGatewayEnabled = instance?.instance?.vercelGatewayEnabled ?? true;
+    const openRouterGatewayEnabled = instance?.instance?.openRouterGatewayEnabled ?? true;
+
+    if (vercelGatewayEnabled && vercelModels && vercelModels.length > 0) {
       vercelModels.forEach((vm) => {
         const parts = vm.id.split("/");
         const provider = parts[0] || "other";
@@ -76,7 +79,8 @@ export function ModelSelector() {
         }
       });
     }
-    if (openRouterModels && openRouterModels.length > 0) {
+
+    if (openRouterGatewayEnabled && openRouterModels && openRouterModels.length > 0) {
       openRouterModels.forEach((om) => {
         list.push({
           value: `openrouter/${om.id}`,
@@ -85,8 +89,8 @@ export function ModelSelector() {
           description: "OpenRouter model",
         });
       });
-    } else if (!isLoading) {
-      // Fallback static models when API is empty/failed
+    } else if (vercelGatewayEnabled && !isLoading) {
+      // Fallback static Anthropic models via Vercel Gateway when API is empty/failed
       list.push(
         {
           value: "claude-opus-4-6",

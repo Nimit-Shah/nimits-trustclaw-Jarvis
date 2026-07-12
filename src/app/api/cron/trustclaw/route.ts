@@ -8,6 +8,22 @@ import { computeNextRunSafe } from "~/server/api/routers/trustclaw/agent/tools/c
 
 const LOCK_TIMEOUT_MS = 10 * 60 * 1000;
 
+/**
+ * Fire-and-forget Mnemosyne consolidation: promotes working memory summaries
+ * to episodic memory tier. Runs once per nightly cron tick.
+ * Errors are swallowed — this is a non-critical background maintenance task.
+ */
+async function consolidateMnemosyne(): Promise<void> {
+  try {
+    await fetch(`${env.MNEMOSYNE_URL}/sleep`, {
+      method: "POST",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    // Sidecar may not be running (e.g. remote deploy). Non-fatal.
+  }
+}
+
 const claimedJobRow = z.object({
   id: z.string(),
   instanceId: z.string(),
@@ -56,6 +72,8 @@ export async function GET(request: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
   }
+
+  void consolidateMnemosyne();
 
   const now = parseNowOverride(request);
   const invocationId = crypto.randomUUID();

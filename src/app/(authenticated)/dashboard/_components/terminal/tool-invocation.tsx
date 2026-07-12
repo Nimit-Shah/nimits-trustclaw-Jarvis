@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, CheckCircle2, XCircle, Wrench } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Wrench, Brain } from "lucide-react";
 import { cn } from "~/lib/utils";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import { getToolName } from "ai";
@@ -19,6 +19,24 @@ interface ToolInvocationProps {
 function getToolDescription(toolCall: AnyToolUIPart): string | undefined {
   const args = (toolCall.input ?? {}) as Record<string, unknown>;
   const name = getToolName(toolCall);
+
+  if (name === "memory_save") {
+    const content = typeof args.content === "string" ? args.content : undefined;
+    if (content) {
+      const preview = content.length > 60 ? content.slice(0, 60) + "…" : content;
+      return `Saving: "${preview}"`;
+    }
+    return "Saving to memory";
+  }
+
+  if (name === "memory_search") {
+    const query = typeof args.query === "string" ? args.query : undefined;
+    if (query) {
+      const preview = query.length > 60 ? query.slice(0, 60) + "…" : query;
+      return `Searching: "${preview}"`;
+    }
+    return "Searching memory";
+  }
 
   if (name.endsWith("SEARCH_TOOLS")) {
     return "Searching for the right tool";
@@ -97,20 +115,26 @@ export function ToolInvocation({ toolCall, onClick }: ToolInvocationProps) {
     return () => clearInterval(interval);
   }, [isRunning]);
 
+  const isMemoryTool = toolName === "memory_save" || toolName === "memory_search";
+
   return (
     <button
       onClick={onClick}
       className={cn(
         "inline-flex max-w-full items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition-colors",
-        "border-border bg-card hover:bg-accent",
+        isMemoryTool
+          ? "border-teal-500/30 bg-teal-950/20 hover:bg-teal-950/40"
+          : "border-border bg-card hover:bg-accent",
         hasError && "border-destructive/30",
       )}
       data-tool-call-id={toolCall.toolCallId}
     >
       {isRunning ? (
-        <Loader2 className="text-chart-4 size-3.5 animate-spin" />
+        <Loader2 className={cn("size-3.5 animate-spin", isMemoryTool ? "text-teal-400" : "text-chart-4")} />
       ) : hasError ? (
         <XCircle className="text-destructive size-3.5" />
+      ) : isMemoryTool ? (
+        <Brain className="size-3.5 text-teal-400" />
       ) : (
         <CheckCircle2 className="text-chart-2 size-3.5" />
       )}
