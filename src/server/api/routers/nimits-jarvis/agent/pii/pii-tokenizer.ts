@@ -124,6 +124,16 @@ export class PIIVault {
     return result;
   }
 
+  /**
+   * Deep-walk an arbitrary value and restore all PII tokens in string
+   * values back to their original values.
+   *
+   * Mirrors the structure of redactToolResult but operates in reverse.
+   */
+  restoreDeep(value: unknown): unknown {
+    return this.deepRestore(value);
+  }
+
   /** Returns audit statistics about what was redacted. */
   getStats(): PIIVaultStats {
     const byType: Partial<Record<PIIType, number>> = {};
@@ -159,6 +169,28 @@ export class PIIVault {
       const result: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
         result[key] = this.deepRedact(val, depth + 1);
+      }
+      return result;
+    }
+
+    return value;
+  }
+
+  private deepRestore(value: unknown, depth = 0): unknown {
+    if (depth > 10) return value;
+
+    if (typeof value === "string") {
+      return this.restore(value);
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.deepRestore(item, depth + 1));
+    }
+
+    if (value !== null && typeof value === "object") {
+      const result: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+        result[key] = this.deepRestore(val, depth + 1);
       }
       return result;
     }

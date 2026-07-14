@@ -327,8 +327,17 @@ export async function prepareAgentRun(
           for (let i = 0; i < step.toolCalls.length; i++) {
             const tc = step.toolCalls[i]!;
             const tr = step.toolResults[i];
-            const tcInput = toPlainRecordSafe(tc.input);
-            const tcResult = tr ? toPlainRecordSafe(tr.output) : null;
+            const rawInput = toPlainRecordSafe(tc.input);
+            const rawOutput = tr ? toPlainRecordSafe(tr.output) : null;
+
+            const tcInput = piiVault
+              ? (piiVault.restoreDeep(rawInput) as Record<string, unknown>)
+              : rawInput;
+            const tcResult = rawOutput
+              ? piiVault
+                ? (piiVault.restoreDeep(rawOutput) as Record<string, unknown>)
+                : rawOutput
+              : null;
 
             assistantParts.push({
               type: "dynamic-tool" as const,
