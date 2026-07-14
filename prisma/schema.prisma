@@ -97,7 +97,16 @@ model Verification {
 
 model ComposioClawInstance {
   id     String @id @default(cuid())
-  userId String @unique
+  userId String
+
+  // Project name displayed in the UI switcher
+  name String @default("Default")
+
+  // Per-project Composio API key (AES-256-GCM encrypted at rest, null = use global env key)
+  composioApiKey String?
+
+  // Composio Project ID resolved from API
+  composioProjectId String?
 
   // Anthropic config
   anthropicModel String @default("qwen3:8b")
@@ -138,6 +147,7 @@ model ComposioClawInstance {
   cronJobs CronJob[]
 
   @@index([userId])
+  @@index([userId, createdAt])
   @@map("composio_claw_instance")
 }
 

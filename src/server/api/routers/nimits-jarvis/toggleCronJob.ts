@@ -3,25 +3,17 @@ import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
 import { toggleCronJobInput } from "./toggleCronJob.schema";
 import { computeNextRunAt } from "./agent/tools/cron-utils";
+import { getInstanceForUser } from "./utils";
 
 export const toggleCronJob = protectedProcedure
   .input(toggleCronJobInput)
   .mutation(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
+    // Resolve instance with ownership check
+    const instance = await getInstanceForUser(userId, input.instanceId);
+
     return db.$transaction(async (tx) => {
-      const instance = await tx.composioClawInstance.findFirst({
-        where: { userId },
-        select: { id: true },
-      });
-
-      if (!instance) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Nimits-Jarvis by Composio instance not found",
-        });
-      }
-
       const job = await tx.cronJob.findFirst({
         where: { id: input.jobId, instanceId: instance.id },
       });

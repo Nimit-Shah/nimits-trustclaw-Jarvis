@@ -5,8 +5,10 @@ import { isTelegramConfigured } from "~/server/clients/telegram";
 export const getStatus = protectedProcedure.query(async ({ ctx }) => {
   const userId = ctx.session.user.id;
 
-  const instance = await db.composioClawInstance.findUnique({
-        where: { userId },
+  // Use findFirst since userId is no longer @unique — earliest instance wins
+  const instance = await db.composioClawInstance.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
     select: { id: true },
   });
 

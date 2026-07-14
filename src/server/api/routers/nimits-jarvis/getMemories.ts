@@ -3,6 +3,7 @@ import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
 import { getMemoriesInput, memoryRow } from "./getMemories.schema";
 import { env } from "~/env";
+import { getInstanceForUser } from "./utils";
 
 const profileItem = z.object({
   key: z.string(),
@@ -40,14 +41,8 @@ export const getMemories = protectedProcedure
   .query(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
-    const instance = await db.composioClawInstance.findFirst({
-      where: { userId },
-      select: { id: true },
-    });
-
-    if (!instance) {
-      return { items: [], nextCursor: undefined, aiProfile: null };
-    }
+    // Resolve instance with ownership check
+    const instance = await getInstanceForUser(userId, input.instanceId);
 
     const cursorDate = input.cursor ? new Date(input.cursor) : undefined;
 

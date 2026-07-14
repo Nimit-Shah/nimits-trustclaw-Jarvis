@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { X, Loader2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { trpc } from "~/clients/trpc";
 import {
   trpcToastOnError,
+  showSuccessToast,
 } from "~/components/core/toast-notifications";
 import type { RouterOutputs } from "~/clients/trpc";
 
@@ -13,9 +15,10 @@ type ToolkitItem = RouterOutputs["toolkits"]["getToolkits"]["items"][number];
 
 interface ToolkitCardProps {
   toolkit: ToolkitItem;
+  instanceId?: string;
 }
 
-export function ToolkitCard({ toolkit }: ToolkitCardProps) {
+export function ToolkitCard({ toolkit, instanceId }: ToolkitCardProps) {
   const [logoLoaded, setLogoLoaded] = useState(false);
   const router = useRouter();
 
@@ -23,6 +26,14 @@ export function ToolkitCard({ toolkit }: ToolkitCardProps) {
   const getAuthLink = trpc.toolkits.getAuthLink.useMutation({
     onError: trpcToastOnError,
     onSuccess: () => void utils.toolkits.getToolkits.invalidate(),
+  });
+
+  const disconnectToolkit = trpc.toolkits.disconnectToolkit.useMutation({
+    onSuccess: () => {
+      showSuccessToast(`Disconnected ${toolkit.name}`);
+      void utils.toolkits.getToolkits.invalidate();
+    },
+    onError: trpcToastOnError,
   });
 
   const isConnected = toolkit.connected || toolkit.noAuth;
@@ -37,12 +48,22 @@ export function ToolkitCard({ toolkit }: ToolkitCardProps) {
 
     try {
       const { redirectUrl } = await getAuthLink.mutateAsync({
+        instanceId,
         toolkit: toolkit.slug,
       });
       router.push(redirectUrl);
     } catch {
       // trpcToastOnError already handles the toast
     }
+  };
+
+  const handleDisconnect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!toolkit.connectionId) return;
+    void disconnectToolkit.mutateAsync({
+      instanceId,
+      connectionId: toolkit.connectionId,
+    });
   };
 
   return (
@@ -74,12 +95,29 @@ export function ToolkitCard({ toolkit }: ToolkitCardProps) {
 
         {/* Card content */}
         <div className="relative z-[2] flex h-full flex-col items-center justify-center gap-1.5 p-4 pt-10">
-          {/* Top-right: status badge or connect button */}
-          <div className="absolute right-3 top-3 z-[1]">
+          {/* Top-right: status badge/connect button + disconnect X */}
+          <div className="absolute right-3 top-3 z-[1] flex items-center gap-1">
             {isConnected ? (
-              <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
-                {statusLabel}
-              </span>
+              <>
+                <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
+                  {statusLabel}
+                </span>
+                {/* Disconnect button — only shown for real connections (not noAuth) */}
+                {toolkit.connected && toolkit.connectionId && (
+                  <button
+                    onClick={handleDisconnect}
+                    disabled={disconnectToolkit.isPending}
+                    title={`Disconnect ${toolkit.name}`}
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive/10 text-destructive opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/20 disabled:opacity-50"
+                  >
+                    {disconnectToolkit.isPending ? (
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    ) : (
+                      <X className="h-2.5 w-2.5" />
+                    )}
+                  </button>
+                )}
+              </>
             ) : (
               <Button
                 size="sm"

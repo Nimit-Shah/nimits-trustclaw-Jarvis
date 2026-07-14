@@ -9,10 +9,12 @@ import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { ToolkitCard } from "./toolkit-card";
 import { ToolkitSearch } from "./toolkit-search";
 import { ToolkitsClientSkeleton } from "./toolkits-client.skeleton";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 type FilterTab = "all" | "connected";
 
 export function ToolkitsClient() {
+  const [instanceId] = useInstanceId();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -29,7 +31,7 @@ export function ToolkitsClient() {
     fetchNextPage,
     isFetchingNextPage,
   } = trpc.toolkits.getToolkits.useInfiniteQuery(
-    { search: search || undefined, isConnected: isConnectedFilter, limit: 20 },
+    { instanceId, search: search || undefined, isConnected: isConnectedFilter, limit: 20 },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       placeholderData: keepPreviousData,
@@ -143,7 +145,7 @@ export function ToolkitsClient() {
             onPointerMove={handlePointerMove}
           >
             {allItems.map((toolkit) => (
-              <ToolkitCard key={toolkit.slug} toolkit={toolkit} />
+              <ToolkitCard key={toolkit.slug} toolkit={toolkit} instanceId={instanceId} />
             ))}
           </div>
         )}

@@ -11,9 +11,11 @@ import {
   showSuccessToast,
   trpcToastOnError,
 } from "~/components/core/toast-notifications";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 export function ModelSelector() {
-  const { data: instance, isLoading: isInstanceLoading } = trpc.nimitsJarvis.getInstance.useQuery();
+  const [instanceId] = useInstanceId();
+  const { data: instance, isLoading: isInstanceLoading } = trpc.nimitsJarvis.getInstance.useQuery({ instanceId });
   const { data: vercelModels, isLoading: isLoadingVercel } = trpc.nimitsJarvis.getVercelModels.useQuery();
   const { data: openRouterModels, isLoading: isLoadingOpenRouter } = trpc.nimitsJarvis.getOpenRouterModels.useQuery();
   const { data: localModels, isLoading: isLoadingLocal } = trpc.nimitsJarvis.getLocalModels.useQuery();
@@ -167,8 +169,8 @@ export function ModelSelector() {
     setOpen(false);
     if (modelValue === currentModel) return;
     
-    // Auto-save instantly!
-    void updateSettings.mutateAsync({ anthropicModel: modelValue });
+    // Auto-save instantly — scoped to the active project instance
+    void updateSettings.mutateAsync({ instanceId, anthropicModel: modelValue });
   };
 
   if (isInstanceLoading) {

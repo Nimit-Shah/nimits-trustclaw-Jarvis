@@ -1,7 +1,8 @@
 import { ToolLoopAgent, stepCountIs } from "ai";
 import type { ToolSet, SystemModelMessage } from "ai";
 import { db } from "~/server/clients/db";
-import { createComposioClient } from "~/server/clients/composio";
+import { createComposioClient, createComposioClientForInstance } from "~/server/clients/composio";
+import { decrypt } from "~/lib/crypto";
 import { buildSystemPrompt } from "./system-prompt";
 import { ollamaProvider } from "~/server/clients/ollama";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
@@ -228,8 +229,11 @@ export async function prepareAgentRun(
     },
   });
 
-  const composio = createComposioClient();
-  const session = await composio.create(instance.userId, {
+  const decryptedApiKey = instance.composioApiKey
+    ? await decrypt(instance.composioApiKey)
+    : null;
+  const composio = createComposioClientForInstance(decryptedApiKey);
+  const session = await composio.create(instance.id, {
     manageConnections: {
       waitForConnections: true,
     },

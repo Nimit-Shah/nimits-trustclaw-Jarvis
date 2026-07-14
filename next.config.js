@@ -77,6 +77,9 @@ const config = {
   // Transpile packages if needed
   transpilePackages: [],
 
+  // Keep these packages external to Next.js server-side bundling
+  serverExternalPackages: ["resumable-stream", "ioredis"],
+
   // Strict mode for better debugging
   typescript: {
     ignoreBuildErrors: false,

@@ -11,9 +11,11 @@ import { CronJobsSettings } from "./cron-jobs-settings";
 import { MemorySettings } from "./memory-settings";
 import { DangerZone } from "./danger-zone";
 import { SettingsPageSkeleton } from "./settings-page.skeleton";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 export function SettingsPageClient() {
-  const { data, isLoading, error } = trpc.nimitsJarvis.getInstance.useQuery();
+  const [instanceId] = useInstanceId();
+  const { data, isLoading, error } = trpc.nimitsJarvis.getInstance.useQuery({ instanceId });
   const instance = data?.instance ?? null;
 
   if (isLoading) {

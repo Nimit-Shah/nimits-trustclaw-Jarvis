@@ -1,22 +1,15 @@
 import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
 import { getHistoryInput } from "./getHistory.schema";
+import { getInstanceForUser } from "./utils";
 
 export const getHistory = protectedProcedure
   .input(getHistoryInput)
   .query(async ({ input, ctx }) => {
     const userId = ctx.session.user.id;
 
-    const chatId = input.chatId;
-    const instance = await db.composioClawInstance.findFirst({
-      where: chatId ? { id: chatId, userId } : { userId },
-      orderBy: { updatedAt: "desc" },
-      select: { id: true },
-    });
-
-    if (!instance) {
-      return { messages: [], nextCursor: undefined };
-    }
+    // Ownership-checked resolution — falls back to earliest-created instance
+    const instance = await getInstanceForUser(userId, input.instanceId);
 
     const messages = await db.message.findMany({
       where: {

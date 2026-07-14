@@ -5,11 +5,13 @@ import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { trpc } from "~/clients/trpc";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 export function useChatHook({ initialMessages, streamId }: {
   initialMessages: UIMessage[];
   streamId: string | null;
 }) {
+  const [instanceId] = useInstanceId();
   const utils = trpc.useUtils();
   const seededRef = useRef(false);
   const [isSeeded, setIsSeeded] = useState(false);
@@ -25,6 +27,10 @@ export function useChatHook({ initialMessages, streamId }: {
         body: {
           ...body,
           messages,
+          // Pass the active project instanceId so the server scopes the run
+          // to the correct project. The server falls back to earliest-created
+          // instance when undefined.
+          instanceId,
           isVoice: (requestMetadata as { isVoice?: boolean } | undefined)?.isVoice ?? false,
         },
       }),

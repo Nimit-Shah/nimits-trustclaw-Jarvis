@@ -1,25 +1,18 @@
 import { protectedProcedure } from "~/server/api/trpc";
-import { db } from "~/server/clients/db";
 import { getStreamingMessage as getStreamingMessageFromRedis } from "~/server/clients/redis";
-
+import { getInstanceForUser } from "./utils";
 import { z } from "zod";
 
 export const getStreamingMessage = protectedProcedure
-  .input(z.object({ chatId: z.string().optional() }).optional())
+  .input(z.object({ instanceId: z.string().optional() }).optional())
   .query(async ({ ctx, input }) => {
-  const userId = ctx.session.user.id;
-  const chatId = input?.chatId;
+    const userId = ctx.session.user.id;
 
-  const instance = await db.composioClawInstance.findFirst({
-    where: chatId ? { id: chatId, userId } : { userId },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true },
+    // Ownership-checked instance resolution
+    const instance = await getInstanceForUser(userId, input?.instanceId);
+
+    const messageId = await getStreamingMessageFromRedis(instance.id);
+    if (!messageId) return null;
+
+    return { messageId };
   });
-
-  if (!instance) return null;
-
-  const messageId = await getStreamingMessageFromRedis(instance.id);
-  if (!messageId) return null;
-
-  return { messageId };
-});

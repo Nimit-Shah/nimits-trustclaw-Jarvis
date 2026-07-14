@@ -18,6 +18,10 @@ export const env = createEnv({
     // Composio API (global key)
     COMPOSIO_API_KEY: z.string(),
 
+    // Encryption key for at-rest per-project Composio API keys (optional — only required when per-project keys are used)
+    // Generate with: openssl rand -hex 32
+    ENCRYPTION_KEY: z.string().optional(),
+
     // Telegram bot (optional - Telegram features disabled when missing)
     TELEGRAM_BOT_TOKEN: z.string().optional(),
     TELEGRAM_BOT_USERNAME: z.string().optional(),
@@ -66,6 +70,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     COMPOSIO_API_KEY: process.env.COMPOSIO_API_KEY,
+    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     TELEGRAM_BOT_USERNAME: process.env.TELEGRAM_BOT_USERNAME,
     TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,

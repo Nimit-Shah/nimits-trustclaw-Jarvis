@@ -1,5 +1,6 @@
 import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
+import { encrypt } from "~/lib/crypto";
 import { createInstanceInput } from "./createInstance.schema";
 
 const WRITING_STYLE_PROMPT_LABELS: Record<string, string> = {
@@ -151,10 +152,16 @@ export const createInstance = protectedProcedure
       ? assembleSoulPrompt(onboardingState)
       : null;
 
+    const encryptedApiKey = input.composioApiKey
+      ? await encrypt(input.composioApiKey)
+      : undefined;
+
     const instance = await db.composioClawInstance.create({
       data: {
         userId,
+        name: input.name,
         anthropicModel: input.anthropicModel,
+        ...(encryptedApiKey !== undefined && { composioApiKey: encryptedApiKey }),
         identityPrompt,
         soulPrompt,
       },

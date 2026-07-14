@@ -3,6 +3,7 @@
 import { Brain, User, Briefcase, Phone, Settings2, RefreshCw } from "lucide-react";
 import moment from "moment";
 import { trpc } from "~/clients/trpc";
+import { useInstanceId } from "~/hooks/use-instance-id";
 import {
   Card,
   CardContent,
@@ -101,7 +102,9 @@ function AiProfileSection({
 }
 
 export function MemorySettings() {
+  const [instanceId] = useInstanceId();
   const { data, isLoading, refetch, isFetching } = trpc.nimitsJarvis.getMemories.useQuery({
+    instanceId,
     limit: 50,
   });
 

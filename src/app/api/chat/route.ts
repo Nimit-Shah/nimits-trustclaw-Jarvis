@@ -1,7 +1,6 @@
 import { smoothStream, UI_MESSAGE_STREAM_HEADERS } from "ai";
 import { z } from "zod";
 import { auth } from "~/server/auth";
-import { db } from "~/server/clients/db";
 import { prepareAgentRun } from "~/server/api/routers/nimits-jarvis/agent/setup";
 import type { PIIVault } from "~/server/api/routers/nimits-jarvis/agent/pii";
 import {
@@ -11,6 +10,7 @@ import {
 import { rateLimit } from "~/server/clients/rate-limit";
 import { getStreamContext } from "./stream-store";
 import { TRPCError } from "@trpc/server";
+import { getInstanceForUser } from "~/server/api/routers/nimits-jarvis/utils";
 
 const chatRequestBody = z.object({
   messages: z.array(
@@ -20,25 +20,23 @@ const chatRequestBody = z.object({
       parts: z.array(z.record(z.string(), z.unknown())).optional(),
     }),
   ),
+  // Which project instance to use for this chat (ownership-checked server side)
+  instanceId: z.string().optional(),
   // Injected by prepareSendMessagesRequest in use-chat-hook.ts for voice requests
   isVoice: z.boolean().optional(),
 });
 
-async function getAuthenticatedInstance(request: Request) {
+async function getAuthenticatedInstance(request: Request, instanceId?: string) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
   const userId = session.user.id;
-  const instance = await db.composioClawInstance.findUnique({
-    where: { userId },
-    select: { id: true, userId: true },
-  });
 
-  if (!instance) {
-    throw new TRPCError({ code: "NOT_FOUND" });
-  }
+  // Ownership-checked — throws FORBIDDEN if instanceId belongs to another user,
+  // falls back to earliest-created instance if instanceId is omitted.
+  const instance = await getInstanceForUser(userId, instanceId);
 
   return { userId, instanceId: instance.id };
 }
@@ -76,17 +74,12 @@ function createPIIRestoreTransform(
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const authResult = await getAuthenticatedInstance(request);
-  if (!authResult) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const { instanceId, userId } = authResult;
-
   const body = chatRequestBody.safeParse(await request.json());
   if (!body.success) {
     return new Response("Invalid request body", { status: 400 });
   }
+
+  const { instanceId, userId } = await getAuthenticatedInstance(request, body.data.instanceId);
 
   const lastUserMessage = [...body.data.messages]
     .reverse()
@@ -150,9 +143,19 @@ export async function POST(request: Request) {
     ...(streamContext
       ? {
           consumeSseStream: ({ stream }) => {
+            const finalStream = piiVault?.hasRedactions
+              ? stream.pipeThrough(
+                  new TransformStream({
+                    transform(chunk, controller) {
+                      controller.enqueue(piiVault.restore(chunk));
+                    },
+                  }),
+                )
+              : stream;
+
             void streamContext.createNewResumableStream(
               streamId,
-              () => stream,
+              () => finalStream,
             );
           },
         }

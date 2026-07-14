@@ -6,6 +6,7 @@ import { trpc } from "~/clients/trpc";
 import { useChatHook } from "./use-chat-hook";
 import type { UIMessage } from "@ai-sdk/react";
 import { NimitsJarvisChatSkeleton } from "./chat/nimits-jarvis-chat.skeleton";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 type ChatContextType = ReturnType<typeof useChatHook> & {
   historyPageCount: number;
@@ -17,8 +18,10 @@ type ChatContextType = ReturnType<typeof useChatHook> & {
 const ChatContext = createContext<ChatContextType | null>(null);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
+  const [instanceId] = useInstanceId();
+
   const historyQuery = trpc.nimitsJarvis.getHistory.useInfiniteQuery(
-    { limit: 10 },
+    { limit: 10, instanceId },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     },

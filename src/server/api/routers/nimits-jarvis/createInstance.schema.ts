@@ -10,9 +10,12 @@ export const ALLOWED_ANTHROPIC_MODELS = [
 export const allowedAnthropicModelSchema = z.string();
 
 export const createInstanceInput = z.object({
+  name: z.string().min(1).max(80).default("Default"),
   anthropicModel: allowedAnthropicModelSchema.default(
     "qwen3:8b",
   ),
+  // Per-project Composio API key (plaintext — server encrypts before write)
+  composioApiKey: z.string().optional(),
 });
 
 export type CreateInstanceInput = z.infer<typeof createInstanceInput>;

@@ -16,6 +16,12 @@ const ianaTimezone = z
   );
 
 export const updateSettingsInput = z.object({
+  // Which project to update — resolved via getInstanceForUser (ownership-checked)
+  instanceId: z.string().optional(),
+  // Project identity
+  name: z.string().min(1).max(80).optional(),
+  // Per-project Composio API key (plaintext — server encrypts before write)
+  composioApiKey: z.string().optional(),
   anthropicModel: z.string().optional(),
   timezone: ianaTimezone.optional(),
   piiRedactionEnabled: z.boolean().optional(),

@@ -13,6 +13,7 @@ import {
   trpcToastOnError,
 } from "~/components/core/toast-notifications";
 import { VirtualizedList } from "~/components/core/virtualized-list";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 function formatCronExpression(expression: string): string {
   const parts = expression.split(" ");
@@ -48,11 +49,12 @@ function formatDate(date: Date | null): string {
 }
 
 export function CronJobsSettings() {
+  const [instanceId] = useInstanceId();
   const utils = trpc.useUtils();
 
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
     trpc.nimitsJarvis.getCronJobs.useInfiniteQuery(
-      { limit: 20 },
+      { instanceId, limit: 20 },
       { getNextPageParam: (lastPage) => lastPage.nextCursor },
     );
 
@@ -72,6 +74,14 @@ export function CronJobsSettings() {
     },
     onError: trpcToastOnError,
   });
+
+  const handleToggle = (jobId: string, enabled: boolean) => {
+    void toggleCronJob.mutateAsync({ instanceId, jobId, enabled });
+  };
+
+  const handleDelete = (jobId: string) => {
+    void deleteCronJob.mutateAsync({ instanceId, jobId });
+  };
 
   return (
     <Card>

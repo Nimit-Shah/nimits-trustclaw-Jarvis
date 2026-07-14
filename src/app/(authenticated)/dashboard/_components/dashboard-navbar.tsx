@@ -19,6 +19,7 @@ import { ThemeToggle } from "~/components/core/theme-toggle";
 import { NimitsJarvisBrand } from "~/app/_components/nimits-jarvis-brand";
 import { authClient } from "~/clients/auth/react";
 import { useTerminalStore } from "./terminal-store";
+import { ProjectSelector } from "./project-selector";
 
 export function DashboardNavbar() {
   const pathname = usePathname();
@@ -39,7 +40,12 @@ export function DashboardNavbar() {
 
   return (
     <header className="border-border bg-background/95 flex h-14 shrink-0 items-center justify-between border-b px-4 backdrop-blur">
-      <NimitsJarvisBrand size="sm" logoLink="/dashboard" />
+      <div className="flex items-center gap-2">
+        <NimitsJarvisBrand size="sm" logoLink="/dashboard" />
+        <div className="hidden sm:block">
+          <ProjectSelector />
+        </div>
+      </div>
 
       <div className="flex items-center gap-1">
         <Tooltip>

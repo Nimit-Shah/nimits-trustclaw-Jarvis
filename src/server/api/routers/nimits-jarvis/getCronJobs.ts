@@ -1,20 +1,15 @@
 import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
 import { getCronJobsInput } from "./getCronJobs.schema";
+import { getInstanceForUser } from "./utils";
 
 export const getCronJobs = protectedProcedure
   .input(getCronJobsInput)
   .query(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
-    const instance = await db.composioClawInstance.findFirst({
-      where: { userId },
-      select: { id: true },
-    });
-
-    if (!instance) {
-      return { items: [], nextCursor: undefined };
-    }
+    // Resolve instance with ownership check
+    const instance = await getInstanceForUser(userId, input.instanceId);
 
     const jobs = await db.cronJob.findMany({
       where: { instanceId: instance.id },
