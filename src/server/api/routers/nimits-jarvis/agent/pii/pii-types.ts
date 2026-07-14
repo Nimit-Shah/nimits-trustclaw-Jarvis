@@ -16,8 +16,7 @@ export type PIIType =
   | "person_name"
   | "api_key"
   | "urn"
-  | "linkedin_url"
-  | "identity";
+  | "linkedin_url";
 
 /** A single PII entity detected in text. */
 export interface PIIMatch {

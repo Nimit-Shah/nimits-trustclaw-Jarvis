@@ -132,6 +132,7 @@ model ComposioClawInstance {
 
   // Context compaction
   compactionCount       Int       @default(0)
+  compactionAttempts    Int       @default(0)
   lastCompactionSummary String?
   lastCompactionAt      DateTime?
   tokensAtCompaction    Int?

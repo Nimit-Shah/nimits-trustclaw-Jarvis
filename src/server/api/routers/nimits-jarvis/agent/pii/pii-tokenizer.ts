@@ -206,9 +206,14 @@ export class PIIVault {
   private redactString(text: string): string {
     if (!text || text.length < 3) return text;
 
-    // Step 1: Replace known PII values (registered from structured extraction)
+    // Step 1: Replace known PII values (registered from structured extraction).
+    // Sort by original length descending so longer strings are replaced first,
+    // preventing substring corruption (e.g., "Johnson" before "John").
     let result = text;
-    for (const mapping of this.mappings) {
+    const sortedMappings = [...this.mappings].sort(
+      (a, b) => b.original.length - a.original.length,
+    );
+    for (const mapping of sortedMappings) {
       if (result.includes(mapping.original)) {
         result = result.split(mapping.original).join(mapping.token);
       }

@@ -1,5 +1,6 @@
 import { ToolLoopAgent, stepCountIs } from "ai";
 import type { ToolSet, SystemModelMessage } from "ai";
+import { after } from "next/server";
 import { db } from "~/server/clients/db";
 import { createComposioClient, createComposioClientForInstance } from "~/server/clients/composio";
 import { decrypt } from "~/lib/crypto";
@@ -208,16 +209,41 @@ export async function prepareAgentRun(
   // Only apply Anthropic-specific cacheControl for Anthropic models —
   // non-Anthropic Vercel Gateway models (OpenAI, DeepSeek, Google) don't
   // understand this option and may reject the request.
+  // Only user/assistant messages support cacheControl; tool messages reject it.
   if (useAnthropicOptions && prunedMessages.length >= 2) {
     const lastHistoryIndex = prunedMessages.length - 2;
     const msg = prunedMessages[lastHistoryIndex]!;
-    prunedMessages[lastHistoryIndex] = {
-      ...msg,
-      providerOptions: {
-        anthropic: { cacheControl: { type: "ephemeral" } },
-      },
-    };
+    if (msg.role === "user" || msg.role === "assistant") {
+      prunedMessages[lastHistoryIndex] = {
+        ...msg,
+        providerOptions: {
+          anthropic: { cacheControl: { type: "ephemeral" } },
+        },
+      };
+    }
   }
+
+  // Create Composio session and fetch tools BEFORE persisting the user
+  // message, so a failed API call doesn't leave an orphaned user message.
+  const decryptedApiKey = await (async () => {
+    try {
+      return instance.composioApiKey
+        ? await decrypt(instance.composioApiKey)
+        : null;
+    } catch {
+      throw new Error(
+        "Failed to decrypt your Composio API key. The key may be corrupted. " +
+        "Try re-entering it in Settings.",
+      );
+    }
+  })();
+  const composio = createComposioClientForInstance(decryptedApiKey);
+  const session = await composio.create(instance.id, {
+    manageConnections: {
+      waitForConnections: true,
+    },
+  });
+  const rawComposioTools = await session.tools();
 
   await db.message.create({
     data: {
@@ -228,17 +254,6 @@ export async function prepareAgentRun(
       ...(userMessageType && { messageType: userMessageType }),
     },
   });
-
-  const decryptedApiKey = instance.composioApiKey
-    ? await decrypt(instance.composioApiKey)
-    : null;
-  const composio = createComposioClientForInstance(decryptedApiKey);
-  const session = await composio.create(instance.id, {
-    manageConnections: {
-      waitForConnections: true,
-    },
-  });
-  const rawComposioTools = await session.tools();
   // Trim verbose Composio tool schemas to reduce token usage by ~40-60%.
   // This prevents free-tier TPM rate-limit errors with smaller models.
   const composioTools = optimizeToolSchemas(rawComposioTools);
@@ -312,7 +327,7 @@ export async function prepareAgentRun(
     }),
     onFinish: async (result) => {
       try {
-        const { totalUsage, steps } = result;
+        const { totalUsage, steps, finishReason } = result;
         const inputTokens = totalUsage.inputTokens ?? 0;
         const outputTokens = totalUsage.outputTokens ?? 0;
         const cacheReadTokens =
@@ -360,6 +375,15 @@ export async function prepareAgentRun(
           }
         }
 
+        // Append truncation notice for Ollama models when the response
+        // was cut off by the maxTokens limit.
+        if (isOllama && finishReason === "length") {
+          assistantParts.push({
+            type: "text" as const,
+            text: "\n\n[Response was truncated due to length limits]",
+          });
+        }
+
         // Update the pre-created assistant message with final content + totals
         await db.message.update({
           where: { id: assistantMessageRow.id },
@@ -385,19 +409,25 @@ export async function prepareAgentRun(
           ...(isOllama ? ollamaCompactionSettings : DEFAULT_COMPACTION_SETTINGS),
         };
 
-        void runPostResponseTasks({
-          instanceId,
-          instance: {
-            anthropicModel: instance.anthropicModel,
-            compactionCount: instance.compactionCount,
-            memoryFlushCount: instance.memoryFlushCount,
-            lastCompactionSummary: instance.lastCompactionSummary,
-            lastCompactionAt: instance.lastCompactionAt,
-          },
-          contextTokens: totalContextTokens,
-          settings,
-          prunedMessages, // Pass original UNREDACTED messages for accurate memory/compaction
-        });
+        void after(() =>
+          runPostResponseTasks({
+            instanceId,
+            instance: {
+              anthropicModel: instance.anthropicModel,
+              compactionCount: instance.compactionCount,
+              compactionAttempts: instance.compactionAttempts,
+              memoryFlushCount: instance.memoryFlushCount,
+              lastCompactionSummary: instance.lastCompactionSummary,
+              lastCompactionAt: instance.lastCompactionAt,
+            },
+            contextTokens: totalContextTokens,
+            settings,
+            prunedMessages,
+            piiVault,
+          }).catch((error) =>
+            console.error("[agent/onFinish] post-response tasks failed:", error),
+          ),
+        );
       } catch (error) {
         console.error("[agent/onFinish] post-stream processing failed:", error);
       } finally {

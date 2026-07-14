@@ -66,10 +66,6 @@ const URN_RE =
 const LINKEDIN_URL_RE =
   /https?:\/\/(?:www\.)?linkedin\.com\/(?:in|pub|company|school)\/[a-zA-Z0-9_-]+/gi;
 
-/** Known system identities/names */
-const IDENTITY_RE =
-  /\b(?:Nimit\s+Shah|Nimit|Jackson|Ayuni\s+Musmac|Ayuni|Musmac)\b/gi;
-
 /**
  * US street addresses. Heuristic: a number followed by words and a street suffix,
  * optionally followed by a 5-digit ZIP.
@@ -109,7 +105,6 @@ interface PatternEntry {
 const PATTERNS: PatternEntry[] = [
   // Order matters: more specific patterns first to prevent overlaps
   { type: "ssn", regex: SSN_RE },
-  { type: "identity", regex: IDENTITY_RE },
   { type: "email", regex: EMAIL_RE },
   { type: "api_key", regex: API_KEY_RE },
   { type: "linkedin_url", regex: LINKEDIN_URL_RE },
@@ -413,8 +408,10 @@ function extractValuesAtPath(
  * Simple heuristic to skip values that look like system/non-PII data.
  */
 function isObviousNonPII(value: string): boolean {
-  // UUIDs, cuid, etc.
-  if (/^[a-f0-9\-]{32,}$/i.test(value)) return true;
+  // UUIDs (standard format: 8-4-4-4-12 hex)
+  if (/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)) return true;
+  // CUID2 format (shorter alphanumeric IDs)
+  if (/^[a-z0-9]{24,32}$/.test(value)) return true;
   // Booleans
   if (value === "true" || value === "false") return true;
   // Pure numbers

@@ -62,7 +62,7 @@ export function estimateContextTokens(
   },
 ): number {
   if (lastUsage) {
-    return calculateContextTokens(lastUsage);
+    return calculateContextTokens(lastUsage) + systemPromptTokens;
   }
 
   let total = systemPromptTokens;

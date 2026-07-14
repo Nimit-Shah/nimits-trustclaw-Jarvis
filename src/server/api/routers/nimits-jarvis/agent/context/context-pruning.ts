@@ -99,9 +99,14 @@ export function pruneContext(
           const trimmedChars =
             outputStr.length - SOFT_TRIM_HEAD_CHARS - SOFT_TRIM_TAIL_CHARS;
 
+          // Preserve the original output type ("json" or "text") so downstream
+          // code that branches on output.type still works correctly.
+          const originalType = "type" in part.output && typeof part.output.type === "string"
+            ? part.output.type
+            : "text";
           msg.content[j] = {
             ...part,
-            output: { type: "text" as const, value: sanitizeString(`${head}\n...[trimmed ${trimmedChars} chars]...\n${tail}`) },
+            output: { type: originalType, value: sanitizeString(`${head}\n...[trimmed ${trimmedChars} chars]...\n${tail}`) },
           };
           prunedCount++;
         }
@@ -115,6 +120,8 @@ export function pruneContext(
   }
 
   if (totalChars / charWindow >= HARD_CLEAR_RATIO) {
+    let cumulativeToolChars = 0;
+
     for (let i = 0; i < protectedBoundary; i++) {
       if (totalChars / charWindow < HARD_CLEAR_RATIO) break;
 
@@ -126,7 +133,12 @@ export function pruneContext(
         toolChars += JSON.stringify(part.output).length;
       }
 
-      if (toolChars < MIN_PRUNABLE_TOOL_CHARS) continue;
+      cumulativeToolChars += toolChars;
+
+      // Clear this tool result if the cumulative total across all old
+      // tool messages exceeds the threshold. This prevents many small
+      // tool results from collectively bloating the context.
+      if (cumulativeToolChars < MIN_PRUNABLE_TOOL_CHARS) continue;
 
       const charsBefore = estimateMessageChars(msg);
       for (let j = 0; j < msg.content.length; j++) {

@@ -49,7 +49,12 @@ export function ChatView() {
   const prevMessageCountRef = useRef(messages.length);
   const prevFirstIdRef = useRef<string | null>(null);
 
-  if (messages.length > 0) {
+  // Track prepended older messages by comparing first-item identity and
+  // count delta. Must be in useEffect (not render) to avoid state updates
+  // during the render phase, which is a React anti-pattern.
+  useEffect(() => {
+    if (messages.length === 0) return;
+
     const currentFirstId = messages[0]!.id;
     const countDelta = messages.length - prevMessageCountRef.current;
 
@@ -59,7 +64,7 @@ export function ChatView() {
 
     prevMessageCountRef.current = messages.length;
     prevFirstIdRef.current = currentFirstId;
-  }
+  }, [messages]);
 
   // ── handleSend (text mode) — must be declared BEFORE useJarvisVoice ──
   const handleSend = useCallback(

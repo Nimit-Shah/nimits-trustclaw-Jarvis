@@ -112,9 +112,6 @@ export async function POST(request: Request) {
     });
   }
 
-  // E2E verification log — remove after confirming voice flag flows end-to-end
-  console.log(`[chat/route] isVoice=${String(body.data.isVoice ?? false)}`);
-
   const prepareResult = await prepareAgentRun({
     instanceId,
     userMessage: userText,

@@ -25,6 +25,7 @@ interface CompactionParams {
   keepRecentTokens: number;
   previousSummary: string | null;
   compactionCount: number;
+  compactionAttempts: number;
 }
 
 interface CompactionResult {
@@ -35,6 +36,7 @@ interface CompactionResult {
 
 const ADAPTIVE_CHUNK_THRESHOLD = 100_000;
 const LARGE_TOOL_RESULT_THRESHOLD = 10_000;
+const MAX_COMPACTION_ATTEMPTS = 3;
 
 export function findCutPoint(
   messages: ReconstructedMessage[],
@@ -96,15 +98,23 @@ async function summarize(
     prompt = `<conversation>\n${redactedConversation}\n</conversation>\n\n${INITIAL_SUMMARIZATION_PROMPT}`;
   }
 
-  const result = await generateText({
-    model,
-    system: COMPACTION_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: prompt }],
-    maxOutputTokens: 4_000,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
 
-  // Restore PII in the summary before persisting to the database
-  return vault ? vault.restore(result.text) : result.text;
+  try {
+    const result = await generateText({
+      model,
+      system: COMPACTION_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+      maxOutputTokens: 4_000,
+      abortSignal: controller.signal,
+    });
+
+    // Restore PII in the summary before persisting to the database
+    return vault ? vault.restore(result.text) : result.text;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function stagedSummarize(
@@ -135,19 +145,30 @@ async function stagedSummarize(
   const mergeModel = mergeProvider === "ollama"
     ? ollamaProvider(anthropicModel)
     : resolveModelId(anthropicModel);
-  const mergeResult = await generateText({
-    model: mergeModel,
-    system: COMPACTION_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `<summary-1>\n${firstSummary}\n</summary-1>\n\n<summary-2>\n${secondSummary}\n</summary-2>\n\n${MERGE_SUMMARIES_PROMPT}`,
-      },
-    ],
-    maxOutputTokens: 4_000,
-  });
 
-  return mergeResult.text;
+  // Redact PII before the merge call. firstSummary and secondSummary were
+  // already restored by their individual summarize() calls, so they contain
+  // real PII values that must be redacted before reaching an external merge LLM.
+  const mergeVault = mergeProvider !== "ollama" ? new PIIVault() : null;
+  const mergeContent = `<summary-1>\n${firstSummary}\n</summary-1>\n\n<summary-2>\n${secondSummary}\n</summary-2>\n\n${MERGE_SUMMARIES_PROMPT}`;
+  const safeMergeContent = mergeVault ? mergeVault.redact(mergeContent) : mergeContent;
+
+  const mergeController = new AbortController();
+  const mergeTimeout = setTimeout(() => mergeController.abort(), 30_000);
+
+  try {
+    const mergeResult = await generateText({
+      model: mergeModel,
+      system: COMPACTION_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: safeMergeContent }],
+      maxOutputTokens: 4_000,
+      abortSignal: mergeController.signal,
+    });
+
+    return mergeVault ? mergeVault.restore(mergeResult.text) : mergeResult.text;
+  } finally {
+    clearTimeout(mergeTimeout);
+  }
 }
 
 function stripLargeToolResults(
@@ -171,7 +192,16 @@ function stripLargeToolResults(
 export async function runCompaction(
   params: CompactionParams,
 ): Promise<CompactionResult | null> {
-  const { instanceId, anthropicModel, messages, keepRecentTokens, previousSummary, compactionCount } = params;
+  const { instanceId, anthropicModel, messages, keepRecentTokens, previousSummary, compactionCount, compactionAttempts } = params;
+
+  // If compaction has failed multiple times in a row, skip this cycle
+  // to avoid wasting tokens on a persistent failure (e.g., context too large
+  // for the model, corrupted data). The counter resets on the next successful
+  // compaction or when the user manually triggers it.
+  if (compactionAttempts >= MAX_COMPACTION_ATTEMPTS) {
+    console.warn("[compaction] skipped: max attempts reached", { compactionAttempts });
+    return null;
+  }
 
   const cutIndex = findCutPoint(messages, keepRecentTokens);
   if (cutIndex <= 0) return null;
@@ -180,6 +210,7 @@ export async function runCompaction(
   const keptMessageCount = messages.length - cutIndex;
 
   let summary: string;
+  let llmFailed = false;
 
   try {
     const conversationText = serializeMessages(messagesToCompact);
@@ -197,7 +228,9 @@ export async function runCompaction(
         previousSummary,
       );
     }
-  } catch {
+  } catch (error) {
+    console.warn("[compaction] summarize failed, retrying without large tool results:", error);
+    llmFailed = true;
     try {
       const stripped = stripLargeToolResults(messagesToCompact);
       const strippedText = serializeMessages(stripped);
@@ -206,7 +239,9 @@ export async function runCompaction(
         strippedText,
         previousSummary,
       );
-    } catch {
+      llmFailed = false;
+    } catch (innerError) {
+      console.warn("[compaction] stripped summarize also failed:", innerError);
       summary = `Conversation covered ${messagesToCompact.length} messages. Summary unavailable due to context limits.`;
     }
   }
@@ -224,12 +259,33 @@ export async function runCompaction(
       data: {
         lastCompactionSummary: summary,
         compactionCount: { increment: 1 },
+        compactionAttempts: 0,
         lastCompactionAt: new Date(),
         tokensAtCompaction: estimatedTokens,
       },
     });
   } catch {
+    // Optimistic lock failure — another compaction ran first, or a transient
+    // DB error. Increment attempts to prevent rapid retry loops.
+    await db.composioClawInstance
+      .update({
+        where: { id: instanceId },
+        data: { compactionAttempts: { increment: 1 } },
+      })
+      .catch(() => {});
+    console.warn("[compaction] DB update failed (optimistic lock or transient error)");
     return null;
+  }
+
+  // If the LLM calls failed but we still produced a fallback summary,
+  // increment attempts so we don't keep retrying with a broken model.
+  if (llmFailed) {
+    await db.composioClawInstance
+      .update({
+        where: { id: instanceId },
+        data: { compactionAttempts: { increment: 1 } },
+      })
+      .catch(() => {});
   }
 
   return {

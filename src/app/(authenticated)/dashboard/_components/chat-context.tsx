@@ -6,6 +6,7 @@ import { trpc } from "~/clients/trpc";
 import { useChatHook } from "./use-chat-hook";
 import type { UIMessage } from "@ai-sdk/react";
 import { NimitsJarvisChatSkeleton } from "./chat/nimits-jarvis-chat.skeleton";
+import { ErrorDisplay } from "~/components/core/error-display";
 import { useInstanceId } from "~/hooks/use-instance-id";
 
 type ChatContextType = ReturnType<typeof useChatHook> & {
@@ -33,6 +34,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       refetchOnWindowFocus: "always",
     },
   );
+
+  if (historyQuery.error || streamingQuery.error) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center p-8">
+        <ErrorDisplay
+          message="Failed to load chat history"
+          retryText="Retry"
+          onRetry={() => {
+            void historyQuery.refetch();
+            void streamingQuery.refetch();
+          }}
+        />
+      </div>
+    );
+  }
 
   if (!historyQuery.data || streamingQuery.isLoading) {
     // Only shows on initial hard load. Client navigations keep data cached.

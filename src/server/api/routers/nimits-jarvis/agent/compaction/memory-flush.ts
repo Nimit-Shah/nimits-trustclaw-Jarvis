@@ -25,6 +25,7 @@ interface MemoryFlushParams {
   anthropicModel: string;
   messages: ReconstructedMessage[];
   compactionCount: number;
+  piiVault: PIIVault | null;
 }
 
 interface MemoryFlushResult {
@@ -34,25 +35,9 @@ interface MemoryFlushResult {
 export async function runMemoryFlush(
   params: MemoryFlushParams,
 ): Promise<MemoryFlushResult> {
-  const { instanceId, anthropicModel, messages, compactionCount } = params;
+  const { instanceId, anthropicModel, messages, compactionCount, piiVault } = params;
 
   try {
-    // Atomically claim this flush cycle BEFORE invoking the LLM. Two
-    // concurrent post-response tasks for the same instance can both
-    // observe the same stale `memoryFlushCount` via `shouldFlushMemory`,
-    // but only one can win this UPDATE. The loser sees count === 0 and
-    // exits without spending tokens or duplicating memory_save inserts.
-    const claim = await db.composioClawInstance.updateMany({
-      where: {
-        id: instanceId,
-        memoryFlushCount: { lte: compactionCount },
-      },
-      data: { memoryFlushCount: compactionCount + 1 },
-    });
-    if (claim.count === 0) {
-      return { memoriesSaved: 0 };
-    }
-
     const provider = getModelProvider(anthropicModel);
     const isOllama = provider === "ollama";
     const model = isOllama
@@ -67,21 +52,35 @@ export async function runMemoryFlush(
 
     const contextSummary = serializeMessages(messages);
 
-    // Redact PII before sending to external LLMs.
-    // Local Ollama models are exempt since data stays on-device.
-    const vault = !isOllama ? new PIIVault() : null;
+    // Redact PII before sending to external LLMs. If the main agent's
+    // PIIVault was passed in, reuse its registrations (which include
+    // structured-extraction PII from tool results). Otherwise create a
+    // fresh vault which only does regex scanning.
+    const vault =
+      !isOllama
+        ? piiVault ?? new PIIVault()
+        : null;
     const safeContext = vault ? vault.redact(contextSummary) : contextSummary;
 
     const flushPrompt = `Here is the recent conversation context:\n\n${safeContext}\n\n${FLUSH_USER_PROMPT}`;
 
-    const result = await generateText({
-      model,
-      system: FLUSH_SYSTEM_PROMPT,
-      messages: [{ role: "user" as const, content: flushPrompt }],
-      tools: memoryTools,
-      stopWhen: stepCountIs(3),
-      maxOutputTokens: 1_000,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+
+    let result;
+    try {
+      result = await generateText({
+        model,
+        system: FLUSH_SYSTEM_PROMPT,
+        messages: [{ role: "user" as const, content: flushPrompt }],
+        tools: memoryTools,
+        stopWhen: stepCountIs(3),
+        maxOutputTokens: 1_000,
+        abortSignal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     let memoriesSaved = 0;
     for (const step of result.steps) {
@@ -92,9 +91,21 @@ export async function runMemoryFlush(
       }
     }
 
-    // Persist the flush turn for transcript history. The counter was
-    // already incremented atomically above, so this transaction only
-    // needs to record the messages.
+    // Atomically claim this flush cycle AFTER the LLM call succeeds.
+    // If the LLM fails, the counter stays unchanged and the next cycle
+    // will retry without permanent data loss.
+    const claim = await db.composioClawInstance.updateMany({
+      where: {
+        id: instanceId,
+        memoryFlushCount: { lte: compactionCount },
+      },
+      data: { memoryFlushCount: compactionCount + 1 },
+    });
+    if (claim.count === 0) {
+      return { memoriesSaved: 0 };
+    }
+
+    // Persist the flush turn for transcript history.
     await db.$transaction(async (tx) => {
       await tx.message.create({
         data: {

@@ -15,6 +15,7 @@ import {
 import { runCompaction } from "../compaction/run-compaction";
 import { runMemoryFlush } from "../compaction/memory-flush";
 import { COMPACTION_SUMMARY_PREFIX } from "../compaction/prompts";
+import type { PIIVault } from "../pii";
 
 const MESSAGE_SAFETY_CAP = 200;
 
@@ -76,8 +77,12 @@ export function toToolResultOutput(value: unknown): ToolResultOutput {
 }
 
 export function toPlainRecord(value: unknown): Record<string, unknown> {
-  const raw: unknown = JSON.parse(JSON.stringify(value ?? {}));
-  return plainRecordSchema.parse(raw);
+  try {
+    const raw: unknown = JSON.parse(JSON.stringify(value ?? {}));
+    return plainRecordSchema.parse(raw);
+  } catch {
+    return {};
+  }
 }
 
 export function toPlainRecordSafe(value: unknown): Record<string, unknown> {
@@ -247,6 +252,7 @@ export async function runPostResponseTasks(params: {
   instance: {
     anthropicModel: string;
     compactionCount: number;
+    compactionAttempts: number;
     memoryFlushCount: number;
     lastCompactionSummary: string | null;
     lastCompactionAt: Date | null;
@@ -254,6 +260,7 @@ export async function runPostResponseTasks(params: {
   contextTokens: number;
   settings: CompactionSettings;
   prunedMessages: ReconstructedMessage[];
+  piiVault: PIIVault | null;
 }): Promise<void> {
   const {
     instanceId,
@@ -261,6 +268,7 @@ export async function runPostResponseTasks(params: {
     contextTokens,
     settings,
     prunedMessages,
+    piiVault,
   } = params;
 
   if (
@@ -277,6 +285,7 @@ export async function runPostResponseTasks(params: {
         anthropicModel: instance.anthropicModel,
         messages: prunedMessages,
         compactionCount: instance.compactionCount,
+        piiVault,
       });
     } catch {
       // Flush failure is non-fatal
@@ -298,6 +307,7 @@ export async function runPostResponseTasks(params: {
         keepRecentTokens: settings.keepRecentTokens,
         previousSummary: instance.lastCompactionSummary,
         compactionCount: instance.compactionCount,
+        compactionAttempts: instance.compactionAttempts,
       });
     } catch {
       // Compaction failure is non-fatal - next turn will retry
