@@ -28,12 +28,23 @@ export const disconnectToolkit = protectedProcedure
 
     // Verify the connectionId actually belongs to this instance before deleting.
     // This prevents a user from passing an arbitrary connectionId belonging to
-    // another user or project.
-    const toolkitsResult = await session.toolkits({ limit: 100 });
-    const isOwned = toolkitsResult.items.some(
-      (toolkit) =>
-        toolkit.connection?.connectedAccount?.id === input.connectionId,
-    );
+    // another user or project. Paginate through results in case the user has
+    // more than 50 connected toolkits (Composio API caps at 50 per page).
+    let isOwned = false;
+    let cursor: string | undefined;
+
+    for (let i = 0; i < 10 && !isOwned; i++) {
+      const page = await session.toolkits({
+        limit: 50,
+        ...(cursor ? { cursor } : {}),
+      });
+      isOwned = page.items.some(
+        (toolkit) =>
+          toolkit.connection?.connectedAccount?.id === input.connectionId,
+      );
+      cursor = page.cursor ?? undefined;
+      if (!cursor || page.items.length === 0) break;
+    }
 
     if (!isOwned) {
       throw new TRPCError({
