@@ -97,20 +97,20 @@
 
 ```
 User
- ├── Project "Default" (API Key: ak_VE83S0...)
- │    ├── Composio Entity: instance-id-1
+ ├── Project A (encrypted API Key)
+ │    ├── Composio Entity: project-a-entity
  │    ├── Settings: PII enabled, Vercel Gateway on
- │    ├── Chat "First chat" (model: claude-sonnet-4-5, 152 messages)
- │    │    ├── Compaction state (compactionCount=3, summary="...")
+ │    ├── Chat "First chat" (model: claude-sonnet-4-5)
+ │    │    ├── Compaction state
  │    │    └── Messages (scoped to chatId)
- │    └── Chat "Research" (model: qwen3:8b, 0 messages)
+ │    └── Chat "Research" (model: qwen3:8b)
  │
- └── Project "Nimits Personal" (API Key: ak_qASkF3o...)
-      ├── Composio Entity: instance-id-2
+ └── Project B (encrypted API Key)
+      ├── Composio Entity: project-b-entity
       ├── Settings: PII enabled, OpenRouter Gateway on
-      ├── Chat "First chat" (model: openrouter/deepseek-v4-flash, 8 messages)
-      │    └── Gmail connection → your@email.com
-      └── Chat "Automation" (model: gpt-4o)
+      ├── Chat "First chat" (model: gpt-4o)
+      │    └── Gmail connection (isolated)
+      └── Chat "Automation"
            └── Cron job: daily summary @ 9am
 ```
 
