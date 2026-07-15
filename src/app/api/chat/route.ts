@@ -1,3 +1,4 @@
+import { db } from "~/server/clients/db";
 import { smoothStream, UI_MESSAGE_STREAM_HEADERS } from "ai";
 import { z } from "zod";
 import { auth } from "~/server/auth";
@@ -20,25 +21,54 @@ const chatRequestBody = z.object({
       parts: z.array(z.record(z.string(), z.unknown())).optional(),
     }),
   ),
-  // Which project instance to use for this chat (ownership-checked server side)
   instanceId: z.string().optional(),
-  // Injected by prepareSendMessagesRequest in use-chat-hook.ts for voice requests
+  chatId: z.string().optional(),
   isVoice: z.boolean().optional(),
 });
 
-async function getAuthenticatedInstance(request: Request, instanceId?: string) {
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
+async function resolveChatId(instanceId: string, chatId?: string): Promise<string> {
+  if (chatId) {
+    const chat = await db.chat.findFirst({
+      where: { id: chatId, instanceId },
+      select: { id: true },
+    });
+    if (chat) return chat.id;
   }
 
-  const userId = session.user.id;
+  const firstChat = await db.chat.findFirst({
+    where: { instanceId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
 
-  // Ownership-checked — throws FORBIDDEN if instanceId belongs to another user,
-  // falls back to earliest-created instance if instanceId is omitted.
-  const instance = await getInstanceForUser(userId, instanceId);
+  if (!firstChat) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "No chats found for this instance",
+    });
+  }
 
-  return { userId, instanceId: instance.id };
+  return firstChat.id;
+}
+
+/**
+ * PII token pattern for detecting partial tokens at chunk boundaries.
+ * Matches tokens like [EMAIL_1], [PHONE_2], [NAME_3].
+ */
+const PII_TOKEN_RE = /\[[A-Z][A-Z_]*\d*\]/g;
+
+/**
+ * Checks if the tail of a string starts what looks like a partial PII token.
+ * e.g. "text [EMA" or "text [PHONE_" — these could be the start of "[EMAIL_1]"
+ * that got split by an SSE chunk boundary.
+ */
+function partialTokenAtEnd(str: string): string {
+  const lastBracket = str.lastIndexOf("[");
+  if (lastBracket === -1) return "";
+  const tail = str.slice(lastBracket);
+  // Only buffer if tail looks like the start of a PII token pattern
+  if (/^\[[A-Z]+(?:_\d*)?$/.test(tail)) return tail;
+  return "";
 }
 
 /**
@@ -46,26 +76,65 @@ async function getAuthenticatedInstance(request: Request, instanceId?: string) {
  * restores PII tokens (e.g. `[EMAIL_1]`) back to original values
  * using the provided vault.
  *
+ * Buffers across chunk boundaries so that tokens split between
+ * two Uint8Array chunks (e.g. `[EMA` in one chunk, `IL_1]` in the next)
+ * are still correctly restored.
+ *
  * Works on raw Uint8Array chunks — decodes to text, applies restoration,
- * then re-encodes. This is safe because SSE is UTF-8 text.
+ * then re-encodes. Safe because SSE is UTF-8 text.
  */
 function createPIIRestoreTransform(
   vault: PIIVault,
 ): TransformStream<Uint8Array, Uint8Array> {
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
+  let buffer = "";
 
   return new TransformStream({
     transform(chunk, controller) {
-      const text = decoder.decode(chunk, { stream: true });
-      const restored = vault.restore(text);
-      controller.enqueue(encoder.encode(restored));
+      buffer += decoder.decode(chunk, { stream: true });
+      const carryOver = partialTokenAtEnd(buffer);
+      const safe = buffer.slice(0, buffer.length - carryOver.length);
+      buffer = carryOver;
+      if (safe) {
+        controller.enqueue(encoder.encode(vault.restore(safe)));
+      }
     },
     flush(controller) {
-      // Flush any remaining decoder state
-      const remaining = decoder.decode();
-      if (remaining) {
-        controller.enqueue(encoder.encode(vault.restore(remaining)));
+      const tail = decoder.decode();
+      buffer += tail;
+      const restored = vault.restore(buffer);
+      if (restored) {
+        controller.enqueue(encoder.encode(restored));
+      }
+    },
+  });
+}
+
+/**
+ * Creates a TransformStream for string-based SSE streams (used inside
+ * consumeSseStream). Same buffering logic as createPIIRestoreTransform
+ * but operating on string chunks instead of Uint8Array.
+ */
+function createPIIRestoreStringTransform(
+  vault: PIIVault,
+): TransformStream<string, string> {
+  let buffer = "";
+
+  return new TransformStream({
+    transform(chunk, controller) {
+      buffer += chunk;
+      const carryOver = partialTokenAtEnd(buffer);
+      const safe = buffer.slice(0, buffer.length - carryOver.length);
+      buffer = carryOver;
+      if (safe) {
+        controller.enqueue(vault.restore(safe));
+      }
+    },
+    flush(controller) {
+      const restored = vault.restore(buffer);
+      if (restored) {
+        controller.enqueue(restored);
       }
     },
   });
@@ -79,7 +148,12 @@ export async function POST(request: Request) {
     return new Response("Invalid request body", { status: 400 });
   }
 
-  const { instanceId, userId } = await getAuthenticatedInstance(request, body.data.instanceId);
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const userId = session.user.id;
 
   const lastUserMessage = [...body.data.messages]
     .reverse()
@@ -112,8 +186,35 @@ export async function POST(request: Request) {
     });
   }
 
+  // Derive instanceId + chatId, preferring chatId (which knows its instance)
+  let instanceId = body.data.instanceId;
+  let chatId = body.data.chatId;
+
+  if (chatId) {
+    const chat = await db.chat.findUnique({
+      where: { id: chatId },
+      select: { id: true, instanceId: true, instance: { select: { userId: true } } },
+    });
+
+    if (!chat || chat.instance.userId !== userId) {
+      return new Response("Chat not found", { status: 404 });
+    }
+
+    instanceId = chat.instanceId;
+  }
+
+  if (!instanceId) {
+    const instance = await getInstanceForUser(userId);
+    instanceId = instance.id;
+  }
+
+  if (!chatId) {
+    chatId = await resolveChatId(instanceId);
+  }
+
   const prepareResult = await prepareAgentRun({
     instanceId,
+    chatId,
     userMessage: userText,
     source: "web",
     isVoice: body.data.isVoice ?? false,
@@ -122,7 +223,7 @@ export async function POST(request: Request) {
   const { agent, messages, piiVault } = prepareResult.result;
 
   const streamId = crypto.randomUUID();
-  await setStreamingMessage(instanceId, streamId);
+  await setStreamingMessage(chatId, streamId);
 
   // agent.stream() returns streamText() result - supports toUIMessageStreamResponse
   // Pass request.signal so the agent stops when the client disconnects (stop button)
@@ -141,13 +242,7 @@ export async function POST(request: Request) {
       ? {
           consumeSseStream: ({ stream }) => {
             const finalStream = piiVault?.hasRedactions
-              ? stream.pipeThrough(
-                  new TransformStream({
-                    transform(chunk, controller) {
-                      controller.enqueue(piiVault.restore(chunk));
-                    },
-                  }),
-                )
+              ? stream.pipeThrough(createPIIRestoreStringTransform(piiVault))
               : stream;
 
             void streamContext.createNewResumableStream(
@@ -178,17 +273,40 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const authResult = await getAuthenticatedInstance(request);
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
-  const { instanceId } = authResult;
+  const userId = session.user.id;
   const url = new URL(request.url);
   const streamId = url.searchParams.get("streamId");
+  const chatIdParam = url.searchParams.get("chatId");
+  const instanceIdParam = url.searchParams.get("instanceId");
 
   if (!streamId) {
     return new Response("Missing streamId", { status: 400 });
   }
 
-  const activeStreamId = await getStreamingMessage(instanceId);
+  let chatId: string | undefined;
+
+  if (chatIdParam) {
+    const chat = await db.chat.findUnique({
+      where: { id: chatIdParam },
+      select: { id: true, instance: { select: { userId: true } } },
+    });
+
+    if (!chat || chat.instance.userId !== userId) {
+      return new Response("Chat not found", { status: 404 });
+    }
+
+    chatId = chat.id;
+  } else {
+    const instance = await getInstanceForUser(userId, instanceIdParam ?? undefined);
+    chatId = await resolveChatId(instance.id);
+  }
+
+  const activeStreamId = await getStreamingMessage(chatId);
   if (activeStreamId !== streamId) {
     return new Response("Stream not found or not yours", { status: 404 });
   }

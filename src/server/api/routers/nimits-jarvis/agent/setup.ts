@@ -125,6 +125,7 @@ function redactContextMessages(
 
 interface PrepareAgentRunParams {
   instanceId: string;
+  chatId: string;
   userMessage: string;
   source: MessageSource;
   userMessageType?: "hidden";
@@ -143,14 +144,22 @@ type PrepareResult = { status: "ready"; result: PrepareAgentRunResult };
 export async function prepareAgentRun(
   params: PrepareAgentRunParams,
 ): Promise<PrepareResult> {
-  const { instanceId, userMessage, source, userMessageType, isVoice } = params;
+  const { instanceId, chatId, userMessage, source, userMessageType, isVoice } = params;
 
-  const instance = await db.composioClawInstance.findUnique({
-    where: { id: instanceId },
-  });
+  const [instance, chat] = await Promise.all([
+    db.composioClawInstance.findUnique({
+      where: { id: instanceId },
+    }),
+    db.chat.findUnique({
+      where: { id: chatId },
+    }),
+  ]);
 
   if (!instance) {
     throw new Error("Instance not found");
+  }
+  if (!chat) {
+    throw new Error("Chat not found");
   }
 
   const user = await db.user.findUnique({
@@ -160,9 +169,9 @@ export async function prepareAgentRun(
 
   const userTimezone = user?.timezone ?? "UTC";
 
-  const provider = getModelProvider(instance.anthropicModel);
+  const provider = getModelProvider(chat.model);
   const isOllama = provider === "ollama";
-  const useAnthropicOptions = isAnthropicModel(instance.anthropicModel);
+  const useAnthropicOptions = isAnthropicModel(chat.model);
 
   // Create a PII vault for non-local models to redact sensitive data
   // before it reaches the external LLM. Local Ollama models are exempt
@@ -182,7 +191,7 @@ export async function prepareAgentRun(
       soulPrompt: instance.soulPrompt,
       identityPrompt: instance.identityPrompt,
       userPrompt: instance.userPrompt,
-      hasCompactionSummary: !!instance.lastCompactionSummary,
+      hasCompactionSummary: !!chat.lastCompactionSummary,
       isOllama,
       piiEnabled: !!piiVault,
       isVoice: isVoice ?? false,
@@ -191,17 +200,18 @@ export async function prepareAgentRun(
 
   const dbMessages = await loadContextMessages(
     instanceId,
-    instance.lastCompactionAt,
+    chatId,
+    chat.lastCompactionAt,
   );
   const aiMessages = buildContext(
     dbMessages,
-    instance.lastCompactionSummary,
+    chat.lastCompactionSummary,
     userMessage,
     relevantMemories,
     userTimezone,
   );
 
-  const contextWindow = getContextWindow(instance.anthropicModel);
+  const contextWindow = getContextWindow(chat.model);
   const { messages: prunedMessages } = pruneContext(aiMessages, contextWindow);
 
   // Add cache breakpoint to last history message (before new user message)
@@ -248,6 +258,7 @@ export async function prepareAgentRun(
   await db.message.create({
     data: {
       instanceId,
+      chatId,
       role: "user",
       content: [{ type: "text", text: userMessage }],
       source,
@@ -258,7 +269,7 @@ export async function prepareAgentRun(
   // This prevents free-tier TPM rate-limit errors with smaller models.
   const composioTools = optimizeToolSchemas(rawComposioTools);
 
-  const customTools = createCustomTools(instanceId, userTimezone);
+  const customTools = createCustomTools(instanceId, chatId, userTimezone);
 
   // Wrap tool executors with sanitization + optional PII redaction.
   // When a vault is active, tool results are scanned for PII and
@@ -272,6 +283,7 @@ export async function prepareAgentRun(
   const assistantMessageRow = await db.message.create({
     data: {
       instanceId,
+      chatId,
       role: "assistant",
       content: toPrismaJson([]),
       source,
@@ -283,13 +295,13 @@ export async function prepareAgentRun(
   });
 
   const model = isOllama
-    ? ollamaProvider(instance.anthropicModel, {
+    ? ollamaProvider(chat.model, {
         keep_alive: -1,
-        options: { num_ctx: getContextWindow(instance.anthropicModel) },
+        options: { num_ctx: getContextWindow(chat.model) },
       })
     : provider === "openrouter"
-      ? createOpenRouter({ apiKey: env.OPENROUTER_API_KEY })(resolveModelId(instance.anthropicModel))
-      : resolveModelId(instance.anthropicModel);
+      ? createOpenRouter({ apiKey: env.OPENROUTER_API_KEY })(resolveModelId(chat.model))
+      : resolveModelId(chat.model);
 
   // Final transport-layer scrub: the system prompt itself may contain
   // PII from the user's identity/soul/user prompts. Scrub it before
@@ -412,13 +424,14 @@ export async function prepareAgentRun(
         void after(() =>
           runPostResponseTasks({
             instanceId,
-            instance: {
-              anthropicModel: instance.anthropicModel,
-              compactionCount: instance.compactionCount,
-              compactionAttempts: instance.compactionAttempts,
-              memoryFlushCount: instance.memoryFlushCount,
-              lastCompactionSummary: instance.lastCompactionSummary,
-              lastCompactionAt: instance.lastCompactionAt,
+            chatId,
+            chat: {
+              anthropicModel: chat.model,
+              compactionCount: chat.compactionCount,
+              compactionAttempts: chat.compactionAttempts,
+              memoryFlushCount: chat.memoryFlushCount,
+              lastCompactionSummary: chat.lastCompactionSummary,
+              lastCompactionAt: chat.lastCompactionAt,
             },
             contextTokens: totalContextTokens,
             settings,
@@ -431,7 +444,7 @@ export async function prepareAgentRun(
       } catch (error) {
         console.error("[agent/onFinish] post-stream processing failed:", error);
       } finally {
-        await clearStreamingMessage(instanceId).catch((error) =>
+        await clearStreamingMessage(chatId).catch((error) =>
           console.error(
             "[agent/onFinish] clearStreamingMessage failed:",
             error,

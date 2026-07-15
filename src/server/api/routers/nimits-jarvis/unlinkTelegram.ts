@@ -1,32 +1,23 @@
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
+import { getInstanceForUser } from "./utils";
+import { z } from "zod";
 
-export const unlinkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
+export const unlinkTelegram = protectedProcedure
+  .input(z.object({ instanceId: z.string().optional() }).optional())
+  .mutation(async ({ ctx, input }) => {
   const userId = ctx.session.user.id;
+  const instance = await getInstanceForUser(userId, input?.instanceId);
 
-  return db.$transaction(async (tx) => {
-    const instance = await tx.composioClawInstance.findFirst({
-      where: { userId },
-      select: { id: true },
-    });
-
-    if (!instance) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "No Nimits-Jarvis by Composio instance found",
-      });
-    }
-
-    await tx.composioClawInstance.update({
-      where: { id: instance.id },
-      data: {
-        telegramChatId: null,
-        telegramLinkToken: null,
-        telegramLinkTokenExpiresAt: null,
-      },
-    });
-
-    return { success: true };
+  await db.composioClawInstance.update({
+    where: { id: instance.id },
+    data: {
+      telegramChatId: null,
+      telegramLinkToken: null,
+      telegramLinkTokenExpiresAt: null,
+    },
   });
+
+  return { success: true };
 });

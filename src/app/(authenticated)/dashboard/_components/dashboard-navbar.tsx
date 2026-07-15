@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   LogOut,
   MessageCircle,
@@ -23,12 +23,22 @@ import { ProjectSelector } from "./project-selector";
 
 export function DashboardNavbar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isChat = pathname === "/dashboard";
   const isSettings = pathname.startsWith("/dashboard/settings");
   const isToolkits = pathname.startsWith("/dashboard/toolkits");
   const terminalOpen = useTerminalStore((s) => s.terminalOpen);
   const setTerminalOpen = useTerminalStore((s) => s.setTerminalOpen);
   const router = useRouter();
+
+  const instanceParam = searchParams.get("instance");
+  const chatParam = searchParams.get("chat");
+  const qsParts: string[] = [];
+  if (instanceParam) qsParts.push(`instance=${instanceParam}`);
+  const instanceQs = qsParts.length > 0 ? `?${qsParts.join("&")}` : "";
+  const chatQsParts = [...qsParts];
+  if (chatParam) chatQsParts.push(`chat=${chatParam}`);
+  const chatQs = chatQsParts.length > 0 ? `?${chatQsParts.join("&")}` : "";
   const handleToggleTerminal = () => {
     setTerminalOpen(!terminalOpen);
   };
@@ -50,7 +60,7 @@ export function DashboardNavbar() {
       <div className="flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link href="/dashboard">
+            <Link href={`/dashboard${chatQs}`}>
               <Button
                 variant="ghost"
                 size="icon"
@@ -65,7 +75,7 @@ export function DashboardNavbar() {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link href="/dashboard/toolkits">
+            <Link href={`/dashboard/toolkits${instanceQs}`}>
               <Button
                 variant="ghost"
                 size="icon"
@@ -80,7 +90,7 @@ export function DashboardNavbar() {
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link href="/dashboard/settings">
+            <Link href={`/dashboard/settings${instanceQs}`}>
               <Button
                 variant="ghost"
                 size="icon"

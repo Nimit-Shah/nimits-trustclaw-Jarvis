@@ -1,7 +1,7 @@
 import { ErrorBoundary } from "~/components/core/error-boundary";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { DashboardNavbar } from "./_components/dashboard-navbar";
-import { ChatProvider } from "./_components/chat-context";
+
 export default function DashboardLayout({
   children,
 }: {
@@ -13,10 +13,8 @@ export default function DashboardLayout({
         <ErrorBoundary>
           <DashboardNavbar />
         </ErrorBoundary>
-        <main className="min-h-0 flex-1">
-          <ChatProvider>
-            {children}
-          </ChatProvider>
+        <main className="min-h-0 flex-1 flex">
+          {children}
         </main>
       </div>
     </TooltipProvider>

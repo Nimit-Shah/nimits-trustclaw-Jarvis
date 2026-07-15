@@ -108,7 +108,7 @@ model ComposioClawInstance {
   // Composio Project ID resolved from API
   composioProjectId String?
 
-  // Anthropic config
+  // Anthropic config — the DEFAULT model for new chats within this instance
   anthropicModel String @default("qwen3:8b")
 
   // PII redaction — enabled by default for all non-local models.
@@ -130,19 +130,12 @@ model ComposioClawInstance {
   identityPrompt  String?
   userPrompt      String?
 
-  // Context compaction
-  compactionCount       Int       @default(0)
-  compactionAttempts    Int       @default(0)
-  lastCompactionSummary String?
-  lastCompactionAt      DateTime?
-  tokensAtCompaction    Int?
-  memoryFlushCount      Int       @default(0)
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  chats    Chat[]
   messages Message[]
   memories Memory[]
   cronJobs CronJob[]
@@ -152,9 +145,32 @@ model ComposioClawInstance {
   @@map("composio_claw_instance")
 }
 
+model Chat {
+  id                    String    @id @default(cuid())
+  instanceId            String
+  name                  String    @default("New Chat")
+  model                 String    @default("qwen3:8b")
+  compactionCount       Int       @default(0)
+  compactionAttempts    Int       @default(0)
+  lastCompactionSummary String?
+  lastCompactionAt      DateTime?
+  tokensAtCompaction    Int?
+  memoryFlushCount      Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  instance ComposioClawInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  messages Message[]
+  cronJobs CronJob[]
+
+  @@index([instanceId, updatedAt])
+  @@map("composio_claw_chat")
+}
+
 model Message {
   id          String        @id @default(cuid())
   instanceId  String
+  chatId      String?
   role        MessageRole
   content     Json
   source      MessageSource @default(web)
@@ -167,8 +183,10 @@ model Message {
 
   createdAt DateTime             @default(now())
   instance  ComposioClawInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  chat      Chat?                @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([instanceId, createdAt])
+  @@index([chatId, createdAt])
   @@map("composio_claw_message")
 }
 
@@ -188,6 +206,7 @@ model Memory {
 model CronJob {
   id         String    @id @default(cuid())
   instanceId String
+  chatId     String?
   expression String
   prompt     String
   timezone   String    @default("UTC")
@@ -200,6 +219,7 @@ model CronJob {
   lastError String?
 
   instance ComposioClawInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  chat     Chat?                @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([instanceId, nextRunAt])
   @@map("composio_claw_cron_job")

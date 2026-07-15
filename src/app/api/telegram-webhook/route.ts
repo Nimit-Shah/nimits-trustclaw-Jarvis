@@ -153,7 +153,7 @@ async function handleRegularMessage(
 ): Promise<void> {
   const instance = await db.composioClawInstance.findUnique({
     where: { telegramChatId: chatId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, anthropicModel: true },
   });
 
   if (!instance) {
@@ -180,8 +180,20 @@ async function handleRegularMessage(
 
   await sendChatAction(chatId, "typing");
 
+  // Auto-create a new chat for each Telegram message
+  const chatName = text.length > 40 ? text.slice(0, 40) + "..." : text;
+  const newChat = await db.chat.create({
+    data: {
+      instanceId: instance.id,
+      name: chatName,
+      model: instance.anthropicModel,
+    },
+    select: { id: true },
+  });
+
   const prepareResult = await prepareAgentRun({
     instanceId: instance.id,
+    chatId: newChat.id,
     userMessage: text,
     source: "telegram",
   });

@@ -16,7 +16,7 @@ export type InstanceLite = Pick<
  *
  * - If `instanceId` is provided: looks it up scoped to `userId` and throws
  *   FORBIDDEN if it doesn't exist or belongs to another user.
- * - If `instanceId` is omitted: falls back to the **earliest-created** instance
+ * - If `instanceId` is omitted: falls back to the **most-recently-updated** instance
  *   for that user (deterministic). Creates a "Default" instance if none exist.
  *
  * Never silently falls back to another user's data.
@@ -49,10 +49,10 @@ export async function getInstanceForUser(
     return instance;
   }
 
-  // Deterministic fallback — earliest-created instance
+  // Deterministic fallback — most-recently-updated instance
   const fallback = await db.composioClawInstance.findFirst({
     where: { userId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { updatedAt: "desc" },
     select,
   });
 
@@ -74,7 +74,7 @@ export async function listInstancesForUser(
 ): Promise<Pick<ComposioClawInstance, "id" | "name" | "createdAt" | "composioProjectId">[]> {
   return db.composioClawInstance.findMany({
     where: { userId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { updatedAt: "desc" },
     select: { id: true, name: true, createdAt: true, composioProjectId: true },
   });
 }

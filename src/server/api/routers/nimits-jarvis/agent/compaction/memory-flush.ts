@@ -21,6 +21,7 @@ const FLUSH_USER_PROMPT =
   "If nothing to store, reply with <silent/>.";
 
 interface MemoryFlushParams {
+  chatId: string;
   instanceId: string;
   anthropicModel: string;
   messages: ReconstructedMessage[];
@@ -35,7 +36,7 @@ interface MemoryFlushResult {
 export async function runMemoryFlush(
   params: MemoryFlushParams,
 ): Promise<MemoryFlushResult> {
-  const { instanceId, anthropicModel, messages, compactionCount, piiVault } = params;
+  const { chatId, instanceId, anthropicModel, messages, compactionCount, piiVault } = params;
 
   try {
     const provider = getModelProvider(anthropicModel);
@@ -94,9 +95,9 @@ export async function runMemoryFlush(
     // Atomically claim this flush cycle AFTER the LLM call succeeds.
     // If the LLM fails, the counter stays unchanged and the next cycle
     // will retry without permanent data loss.
-    const claim = await db.composioClawInstance.updateMany({
+    const claim = await db.chat.updateMany({
       where: {
-        id: instanceId,
+        id: chatId,
         memoryFlushCount: { lte: compactionCount },
       },
       data: { memoryFlushCount: compactionCount + 1 },
@@ -110,6 +111,7 @@ export async function runMemoryFlush(
       await tx.message.create({
         data: {
           instanceId,
+          chatId,
           role: "user",
           content: [{ type: "text", text: FLUSH_USER_PROMPT }],
           source: "web",
@@ -120,6 +122,7 @@ export async function runMemoryFlush(
       await tx.message.create({
         data: {
           instanceId,
+          chatId,
           role: "assistant",
           content: [{ type: "text", text: result.text || "<silent/>" }],
           source: "web",

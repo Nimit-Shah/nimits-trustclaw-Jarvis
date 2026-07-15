@@ -17,6 +17,7 @@ async function loadJobsFromDb(jobIds: string[]) {
       SELECT
         cj.id,
         cj."instanceId",
+        cj."chatId",
         ci."userId",
         cj.expression,
         cj.prompt,
@@ -93,6 +94,21 @@ async function executeJobs(
     const instanceId = allowedJobs[0]!.instanceId;
     const telegramChatId = allowedJobs[0]!.telegramChatId;
 
+    let chatId = allowedJobs[0]!.chatId;
+    if (!chatId) {
+      // Fallback: use first chat for this instance
+      const firstChat = await db.chat.findFirst({
+        where: { instanceId },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      });
+      if (!firstChat) {
+        await releaseJobLocks(allowedJobs, invocationId, now, "No chat found for instance");
+        return;
+      }
+      chatId = firstChat.id;
+    }
+
     // Combine all prompts into a single user message
     const combinedMessage = allowedJobs
       .map((j) => `<scheduled-task>\n${j.prompt}\n</scheduled-task>`)
@@ -100,6 +116,7 @@ async function executeJobs(
 
     const prepareResult = await prepareAgentRun({
       instanceId,
+      chatId,
       userMessage: combinedMessage,
       source: "cron",
       userMessageType: "hidden",

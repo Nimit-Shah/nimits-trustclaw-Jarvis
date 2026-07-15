@@ -10,6 +10,7 @@ import { ErrorDisplay } from "~/components/core/error-display";
 import { useInstanceId } from "~/hooks/use-instance-id";
 
 type ChatContextType = ReturnType<typeof useChatHook> & {
+  chatId: string;
   historyPageCount: number;
   fetchOlderMessages: () => void;
   hasOlderMessages: boolean;
@@ -18,18 +19,24 @@ type ChatContextType = ReturnType<typeof useChatHook> & {
 
 const ChatContext = createContext<ChatContextType | null>(null);
 
-export function ChatProvider({ children }: { children: ReactNode }) {
+export function ChatProvider({
+  children,
+  chatId,
+}: {
+  children: ReactNode;
+  chatId: string;
+}) {
   const [instanceId] = useInstanceId();
 
   const historyQuery = trpc.nimitsJarvis.getHistory.useInfiniteQuery(
-    { limit: 10, instanceId },
+    { limit: 10, instanceId, chatId },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     },
   );
 
   const streamingQuery = trpc.nimitsJarvis.getStreamingMessage.useQuery(
-    undefined,
+    { instanceId, chatId },
     {
       refetchOnWindowFocus: "always",
     },
@@ -51,7 +58,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   if (!historyQuery.data || streamingQuery.isLoading) {
-    // Only shows on initial hard load. Client navigations keep data cached.
     return (
       <div className="flex h-full w-full flex-col">
         <NimitsJarvisChatSkeleton />
@@ -71,13 +77,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const streamId = streamingQuery.data?.messageId ?? null;
 
   return (
-    <InnerChatProvider 
-      initialMessages={initialMessages} 
+    <InnerChatProvider
+      initialMessages={initialMessages}
       streamId={streamId}
       historyPageCount={pages.length}
       fetchOlderMessages={() => void historyQuery.fetchNextPage()}
       hasOlderMessages={historyQuery.hasNextPage ?? false}
       isFetchingOlderMessages={historyQuery.isFetchingNextPage}
+      chatId={chatId}
     >
       {children}
     </InnerChatProvider>
@@ -92,6 +99,7 @@ function InnerChatProvider({
   fetchOlderMessages,
   hasOlderMessages,
   isFetchingOlderMessages,
+  chatId,
 }: {
   children: ReactNode;
   initialMessages: UIMessage[];
@@ -100,8 +108,9 @@ function InnerChatProvider({
   fetchOlderMessages: () => void;
   hasOlderMessages: boolean;
   isFetchingOlderMessages: boolean;
+  chatId: string;
 }) {
-  const chatHook = useChatHook({ initialMessages, streamId });
+  const chatHook = useChatHook({ initialMessages, streamId, chatId });
 
   const pageCountRef = useRef(historyPageCount);
   useEffect(() => {
@@ -122,6 +131,7 @@ function InnerChatProvider({
     <ChatContext.Provider
       value={{
         ...chatHook,
+        chatId,
         historyPageCount,
         fetchOlderMessages,
         hasOlderMessages,

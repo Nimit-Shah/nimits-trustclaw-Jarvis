@@ -13,10 +13,12 @@ import {
   showSuccessToast,
   trpcToastOnError,
 } from "~/components/core/toast-notifications";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 const CONFIRM_TEXT = "delete my instance";
 
 export function DangerZone() {
+  const [instanceId] = useInstanceId();
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const router = useRouter();
@@ -92,7 +94,7 @@ export function DangerZone() {
                 <Button
                   variant="destructive"
                   disabled={!isConfirmed || deleteInstance.isPending}
-                  onClick={() => void deleteInstance.mutateAsync()}
+                  onClick={() => void deleteInstance.mutateAsync({ instanceId })}
                 >
                   {deleteInstance.isPending ? (
                     <>

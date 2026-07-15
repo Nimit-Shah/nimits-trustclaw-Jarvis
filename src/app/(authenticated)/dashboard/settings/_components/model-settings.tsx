@@ -10,6 +10,7 @@ import {
   showSuccessToast,
   trpcToastOnError,
 } from "~/components/core/toast-notifications";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 export interface ModelSettingsProps {
   piiRedactionEnabled: boolean;
@@ -22,6 +23,7 @@ export function ModelSettings({
   vercelGatewayEnabled,
   openRouterGatewayEnabled,
 }: ModelSettingsProps) {
+  const [instanceId] = useInstanceId();
   const [piiEnabled, setPiiEnabled] = useState(piiRedactionEnabled);
   const [vercelEnabled, setVercelEnabled] = useState(vercelGatewayEnabled);
   const [openRouterEnabled, setOpenRouterEnabled] = useState(openRouterGatewayEnabled);
@@ -65,7 +67,7 @@ export function ModelSettings({
               checked={piiEnabled}
               onCheckedChange={(checked) => {
                 setPiiEnabled(checked);
-                void updateSettings.mutateAsync({ piiRedactionEnabled: checked });
+                void updateSettings.mutateAsync({ instanceId, piiRedactionEnabled: checked });
               }}
               disabled={updateSettings.isPending}
             />
@@ -88,7 +90,7 @@ export function ModelSettings({
               checked={vercelEnabled}
               onCheckedChange={(checked) => {
                 setVercelEnabled(checked);
-                void updateSettings.mutateAsync({ vercelGatewayEnabled: checked });
+                void updateSettings.mutateAsync({ instanceId, vercelGatewayEnabled: checked });
               }}
               disabled={updateSettings.isPending}
             />
@@ -107,7 +109,7 @@ export function ModelSettings({
               checked={openRouterEnabled}
               onCheckedChange={(checked) => {
                 setOpenRouterEnabled(checked);
-                void updateSettings.mutateAsync({ openRouterGatewayEnabled: checked });
+                void updateSettings.mutateAsync({ instanceId, openRouterGatewayEnabled: checked });
               }}
               disabled={updateSettings.isPending}
             />

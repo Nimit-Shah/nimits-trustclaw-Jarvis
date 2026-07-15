@@ -164,6 +164,12 @@ export const createInstance = protectedProcedure
         ...(encryptedApiKey !== undefined && { composioApiKey: encryptedApiKey }),
         identityPrompt,
         soulPrompt,
+        chats: {
+          create: {
+            name: "First chat",
+            model: input.anthropicModel,
+          },
+        },
       },
       select: INSTANCE_SELECT,
     });

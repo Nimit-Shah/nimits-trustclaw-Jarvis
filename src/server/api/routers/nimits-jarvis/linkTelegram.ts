@@ -4,10 +4,14 @@ import { protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/clients/db";
 import { env } from "~/env";
 import { isTelegramConfigured } from "~/server/clients/telegram";
+import { getInstanceForUser } from "./utils";
+import { z } from "zod";
 
 const LINK_TOKEN_TTL_MS = 15 * 60 * 1000;
 
-export const linkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
+export const linkTelegram = protectedProcedure
+  .input(z.object({ instanceId: z.string().optional() }).optional())
+  .mutation(async ({ ctx, input }) => {
   if (!isTelegramConfigured()) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -16,10 +20,11 @@ export const linkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
   }
 
   const userId = ctx.session.user.id;
+  const instance = await getInstanceForUser(userId, input?.instanceId);
 
   return db.$transaction(async (tx) => {
-    const instance = await tx.composioClawInstance.findFirst({
-      where: { userId },
+    const freshInstance = await tx.composioClawInstance.findUnique({
+      where: { id: instance.id },
       select: {
         id: true,
         telegramLinkToken: true,
@@ -28,14 +33,14 @@ export const linkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
       },
     });
 
-    if (!instance) {
+    if (!freshInstance) {
       throw new TRPCError({
         code: "NOT_FOUND",
         message: "No Nimits-Jarvis by Composio instance found. Create one first.",
       });
     }
 
-    if (instance.telegramChatId) {
+    if (freshInstance.telegramChatId) {
       throw new TRPCError({
         code: "CONFLICT",
         message: "Telegram is already linked",
@@ -43,15 +48,15 @@ export const linkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
     }
 
     const hasValidToken =
-      instance.telegramLinkToken &&
-      instance.telegramLinkTokenExpiresAt &&
-      instance.telegramLinkTokenExpiresAt > new Date();
+      freshInstance.telegramLinkToken &&
+      freshInstance.telegramLinkTokenExpiresAt &&
+      freshInstance.telegramLinkTokenExpiresAt > new Date();
 
     if (hasValidToken) {
       return {
-        token: instance.telegramLinkToken,
+        token: freshInstance.telegramLinkToken,
         botUsername: env.TELEGRAM_BOT_USERNAME,
-        expiresAt: instance.telegramLinkTokenExpiresAt,
+        expiresAt: freshInstance.telegramLinkTokenExpiresAt,
       };
     }
 
@@ -59,7 +64,7 @@ export const linkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
     const expiresAt = new Date(Date.now() + LINK_TOKEN_TTL_MS);
 
     await tx.composioClawInstance.update({
-      where: { id: instance.id },
+      where: { id: freshInstance.id },
       data: {
         telegramLinkToken: token,
         telegramLinkTokenExpiresAt: expiresAt,

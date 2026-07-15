@@ -8,17 +8,19 @@ export default async function Page({
 }) {
   const { instance } = await searchParams;
 
-  await trpcServer.api.nimitsJarvis.getInstance.prefetch({
-    instanceId: instance,
-  });
-  void trpcServer.api.nimitsJarvis.getCronJobs.prefetchInfinite({
-    instanceId: instance,
-    limit: 20,
-  });
-  void trpcServer.api.nimitsJarvis.getMemories.prefetch({
-    instanceId: instance,
-    limit: 50,
-  });
+  if (instance) {
+    await trpcServer.api.nimitsJarvis.getInstance.prefetch({
+      instanceId: instance,
+    });
+    void trpcServer.api.nimitsJarvis.getCronJobs.prefetchInfinite({
+      instanceId: instance,
+      limit: 20,
+    });
+    void trpcServer.api.nimitsJarvis.getMemories.prefetch({
+      instanceId: instance,
+      limit: 50,
+    });
+  }
 
   return (
     <HydrateClient>

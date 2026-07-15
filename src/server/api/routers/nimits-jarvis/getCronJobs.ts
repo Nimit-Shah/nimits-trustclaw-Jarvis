@@ -15,6 +15,7 @@ export const getCronJobs = protectedProcedure
       where: { instanceId: instance.id },
       select: {
         id: true,
+        chatId: true,
         expression: true,
         prompt: true,
         timezone: true,

@@ -3,10 +3,10 @@ import { createMemorySearchTool } from "./memory-search";
 import { createScheduleTool } from "./schedule";
 export { searchMemoriesForContext } from "./memory-search";
 
-export function createCustomTools(instanceId: string, userTimezone = "UTC") {
+export function createCustomTools(instanceId: string, chatId?: string, userTimezone = "UTC") {
   return {
     memory_save: createMemorySaveTool(instanceId),
     memory_search: createMemorySearchTool(instanceId),
-    schedule: createScheduleTool(instanceId, userTimezone),
+    schedule: createScheduleTool(instanceId, chatId ?? "", userTimezone),
   };
 }

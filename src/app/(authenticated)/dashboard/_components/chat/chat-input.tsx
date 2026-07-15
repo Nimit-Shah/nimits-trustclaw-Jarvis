@@ -6,12 +6,14 @@ import type { ChatStatus } from "ai";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import { showErrorToast } from "~/components/core/toast-notifications";
 import { ModelSelector } from "./model-selector";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   onStop: () => void;
   status: ChatStatus;
+  chatId: string;
   /** Voice mode controls injected from the parent */
   voice?: {
     whisperAvailable: boolean;
@@ -21,7 +23,7 @@ interface ChatInputProps {
 
 const MAX_MESSAGE_LENGTH = 50_000;
 
-export function ChatInput({ onSend, onStop, status, voice }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, status, chatId, voice }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -55,6 +57,28 @@ export function ChatInput({ onSend, onStop, status, voice }: ChatInputProps) {
     }
   };
 
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]!;
+      if (item.type.startsWith("image/") || item.kind === "file") {
+        e.preventDefault();
+        showErrorToast("This model does not support image input");
+        return;
+      }
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "none";
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    showErrorToast("This model does not support image input");
+  }, []);
+
   const micDisabledReason = !voice?.whisperAvailable
     ? "Start the local Whisper server to use voice"
     : isStreaming
@@ -70,6 +94,9 @@ export function ChatInput({ onSend, onStop, status, voice }: ChatInputProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             placeholder={
               isStreaming ? "Waiting for response..." : "Ask me anything..."
             }
@@ -87,7 +114,7 @@ export function ChatInput({ onSend, onStop, status, voice }: ChatInputProps) {
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <ModelSelector />
+              <ModelSelector chatId={chatId} />
 
               {/* Mic / Voice Mode button */}
               {voice && (

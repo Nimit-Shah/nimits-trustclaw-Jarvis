@@ -27,6 +27,7 @@ async function consolidateMnemosyne(): Promise<void> {
 const claimedJobRow = z.object({
   id: z.string(),
   instanceId: z.string(),
+  chatId: z.string().nullable(),
 });
 
 const staleJobRow = z.object({
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
           (cj."nextRunAt" <= ${now} AND cj."lockedAt" IS NULL)
           OR (cj."lockedAt" IS NOT NULL AND cj."lockedAt" < ${lockTimeout})
         )
-      RETURNING cj.id, cj."instanceId"
+      RETURNING cj.id, cj."instanceId", cj."chatId"
     `,
   );
 
@@ -130,27 +131,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ dispatched: 0, results: [], now: now.toISOString() });
   }
 
-  // Group claimed jobs by instanceId for batched execution
-  const jobsByInstance = new Map<string, string[]>();
+  // Group claimed jobs by (instanceId, chatId) for batched execution
+  const jobsByChat = new Map<string, string[]>();
   for (const job of claimedJobs) {
-    const existing = jobsByInstance.get(job.instanceId);
+    const key = `${job.instanceId}:${job.chatId ?? "default"}`;
+    const existing = jobsByChat.get(key);
     if (existing) {
       existing.push(job.id);
     } else {
-      jobsByInstance.set(job.instanceId, [job.id]);
+      jobsByChat.set(key, [job.id]);
     }
   }
 
   const executeUrl = `${env.NEXT_PUBLIC_APP_URL}/api/cron/nimits-jarvis/execute`;
 
-  const entries = Array.from(jobsByInstance.entries());
+  const entries = Array.from(jobsByChat.entries());
   const results = await Promise.allSettled(
     entries.map(([, jobIds]) =>
       fetch(executeUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Forward CRON_SECRET so /execute can authenticate the inbound call.
           Authorization: `Bearer ${env.CRON_SECRET}`,
         },
         body: JSON.stringify({
@@ -163,14 +164,14 @@ export async function GET(request: Request) {
   );
 
   const dispatched = results.map((result, i) => ({
-    instanceId: entries[i]![0],
+    groupKey: entries[i]![0],
     jobIds: entries[i]![1],
     status: result.status === "fulfilled" && result.value.ok ? "dispatched" : "dispatch_failed",
   }));
 
   return NextResponse.json({
     dispatched: claimedJobs.length,
-    instances: entries.length,
+    groups: entries.length,
     results: dispatched,
     now: now.toISOString(),
   });

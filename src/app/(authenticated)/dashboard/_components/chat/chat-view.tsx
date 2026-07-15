@@ -26,17 +26,18 @@ const SAMPLE_PROMPTS = [
 const START_INDEX = 100_000;
 
 export function ChatView() {
-  const { 
-    sendMessage, 
-    sendVoiceMessage, 
-    stop, 
-    messages, 
-    status, 
+  const {
+    sendMessage,
+    sendVoiceMessage,
+    stop,
+    messages,
+    status,
     setMessages,
     historyPageCount,
     fetchOlderMessages,
     hasOlderMessages,
-    isFetchingOlderMessages
+    isFetchingOlderMessages,
+    chatId,
   } = useChatContext();
   const terminalOpen = useTerminalStore((s) => s.terminalOpen);
   const setTerminalOpen = useTerminalStore((s) => s.setTerminalOpen);
@@ -148,110 +149,123 @@ export function ChatView() {
   return (
     <div className="flex h-full overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col">
-
-
-        <div className="relative min-h-0 flex-1">
-          {isEmpty ? (
-            <div className="flex h-full flex-col items-center justify-center gap-4">
-              <div className="flex flex-wrap justify-center gap-2">
-                {SAMPLE_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => {
-                      void handleSend(prompt);
-                    }}
-                    className="border-border text-muted-foreground hover:bg-accent hover:text-foreground rounded-full border px-4 py-2 text-sm transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
+        {isEmpty ? (
+          <div className="flex h-full flex-col items-center justify-center gap-6">
+            <div className="flex flex-wrap justify-center gap-2">
+              {SAMPLE_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => {
+                    void handleSend(prompt);
+                  }}
+                  className="border-border text-muted-foreground hover:bg-accent hover:text-foreground rounded-full border px-4 py-2 text-sm transition-colors"
+                >
+                  {prompt}
+                </button>
+              ))}
             </div>
-          ) : (
-            <Virtuoso
-              ref={virtuosoRef}
-              data={messages}
-              firstItemIndex={firstItemIndex}
-              initialTopMostItemIndex={{ index: "LAST", align: "end" }}
-              startReached={handleStartReached}
-              atBottomStateChange={setAtBottom}
-              atBottomThreshold={50}
-              increaseViewportBy={{ top: 200, bottom: 0 }}
-              components={{
-                Header: () =>
-                  isFetchingOlderMessages ? (
-                    <div className="flex justify-center py-3">
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : null,
-                Footer: () => (
-                  <div className="pb-4 md:pb-6">
-                    {isWaitingForAssistant && (
-                      <div className="mx-auto w-full max-w-3xl px-4 pt-6 md:px-8">
-                        <ThinkingIndicator />
+            <div className="w-full max-w-3xl px-4">
+              <ChatInput
+                onSend={handleSend}
+                onStop={stop}
+                status={status}
+                chatId={chatId}
+                voice={{
+                  whisperAvailable: jarvis.whisperAvailable,
+                  onOpenVoiceMode: jarvis.openVoiceMode,
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="relative min-h-0 flex-1">
+              <Virtuoso
+                ref={virtuosoRef}
+                data={messages}
+                firstItemIndex={firstItemIndex}
+                initialTopMostItemIndex={{ index: "LAST", align: "end" }}
+                startReached={handleStartReached}
+                atBottomStateChange={setAtBottom}
+                atBottomThreshold={50}
+                increaseViewportBy={{ top: 200, bottom: 0 }}
+                components={{
+                  Header: () =>
+                    isFetchingOlderMessages ? (
+                      <div className="flex justify-center py-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       </div>
-                    )}
-                  </div>
-                ),
+                    ) : null,
+                  Footer: () => (
+                    <div className="pb-4 md:pb-6">
+                      {isWaitingForAssistant && (
+                        <div className="mx-auto w-full max-w-3xl px-4 pt-6 md:px-8">
+                          <ThinkingIndicator />
+                        </div>
+                      )}
+                    </div>
+                  ),
+                }}
+                itemContent={(_index, message) =>
+                  message.role === "user" ? (
+                    <div className="mx-auto w-full max-w-3xl px-4 pt-6 md:px-8">
+                      <ErrorBoundary
+                        key={message.id}
+                        fallback={
+                          <p className="text-muted-foreground text-sm italic">
+                            Failed to render message
+                          </p>
+                        }
+                      >
+                        <UserMessage message={message} />
+                      </ErrorBoundary>
+                    </div>
+                  ) : (
+                    <div className="mx-auto w-full max-w-3xl px-4 pt-6 md:px-8">
+                      <ErrorBoundary
+                        key={message.id}
+                        fallback={
+                          <p className="text-muted-foreground text-sm italic">
+                            Failed to render message
+                          </p>
+                        }
+                      >
+                        <AssistantMessage
+                          message={message}
+                          status={message.id === lastMessage?.id ? status : "ready"}
+                          onOpenTerminal={() => setTerminalOpen(true)}
+                        />
+                      </ErrorBoundary>
+                    </div>
+                  )
+                }
+                className="!overflow-y-auto"
+              />
+
+              {!atBottom && !isEmpty && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleScrollToBottom}
+                  className="absolute bottom-4 left-1/2 size-10 -translate-x-1/2 rounded-full shadow-md"
+                >
+                  <ArrowDown className="size-4" />
+                </Button>
+              )}
+            </div>
+
+            <ChatInput
+              onSend={handleSend}
+              onStop={stop}
+              status={status}
+              chatId={chatId}
+              voice={{
+                whisperAvailable: jarvis.whisperAvailable,
+                onOpenVoiceMode: jarvis.openVoiceMode,
               }}
-              itemContent={(_index, message) =>
-                message.role === "user" ? (
-                  <div className="mx-auto w-full max-w-3xl px-4 pt-6 md:px-8">
-                    <ErrorBoundary
-                      key={message.id}
-                      fallback={
-                        <p className="text-muted-foreground text-sm italic">
-                          Failed to render message
-                        </p>
-                      }
-                    >
-                      <UserMessage message={message} />
-                    </ErrorBoundary>
-                  </div>
-                ) : (
-                  <div className="mx-auto w-full max-w-3xl px-4 pt-6 md:px-8">
-                    <ErrorBoundary
-                      key={message.id}
-                      fallback={
-                        <p className="text-muted-foreground text-sm italic">
-                          Failed to render message
-                        </p>
-                      }
-                    >
-                      <AssistantMessage
-                        message={message}
-                        status={message.id === lastMessage?.id ? status : "ready"}
-                        onOpenTerminal={() => setTerminalOpen(true)}
-                      />
-                    </ErrorBoundary>
-                  </div>
-                )
-              }
-              className="!overflow-y-auto"
             />
-          )}
-
-          {!atBottom && !isEmpty && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleScrollToBottom}
-              className="absolute bottom-4 left-1/2 size-10 -translate-x-1/2 rounded-full shadow-md"
-            >
-              <ArrowDown className="size-4" />
-            </Button>
-          )}
-        </div>
-
-        <ChatInput
-          onSend={handleSend}
-          onStop={stop}
-          status={status}
-          voice={{
-            whisperAvailable: jarvis.whisperAvailable,
-            onOpenVoiceMode: jarvis.openVoiceMode,
-          }}
-        />
+          </>
+        )}
       </div>
 
       {/* Jarvis Voice Mode Overlay */}

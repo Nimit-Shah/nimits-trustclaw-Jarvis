@@ -13,24 +13,30 @@ import {
 } from "~/components/core/toast-notifications";
 import { useInstanceId } from "~/hooks/use-instance-id";
 
-export function ModelSelector() {
+interface ModelSelectorProps {
+  chatId: string;
+}
+
+export function ModelSelector({ chatId }: ModelSelectorProps) {
   const [instanceId] = useInstanceId();
   const { data: instance, isLoading: isInstanceLoading } = trpc.nimitsJarvis.getInstance.useQuery({ instanceId });
+  const { data: chats } = trpc.chats.list.useQuery({ instanceId });
   const { data: vercelModels, isLoading: isLoadingVercel } = trpc.nimitsJarvis.getVercelModels.useQuery();
   const { data: openRouterModels, isLoading: isLoadingOpenRouter } = trpc.nimitsJarvis.getOpenRouterModels.useQuery();
   const { data: localModels, isLoading: isLoadingLocal } = trpc.nimitsJarvis.getLocalModels.useQuery();
-  
+
   const isLoading = isLoadingVercel || isLoadingOpenRouter || isLoadingLocal || isInstanceLoading;
-  const currentModel = instance?.instance?.anthropicModel ?? "qwen3:8b";
+  const currentChat = chats?.find((c) => c.id === chatId);
+  const currentModel = currentChat?.model ?? instance?.instance?.anthropicModel ?? "qwen3:8b";
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const utils = trpc.useUtils();
 
-  const updateSettings = trpc.nimitsJarvis.updateSettings.useMutation({
+  const updateModel = trpc.chats.updateModel.useMutation({
     onSuccess: () => {
       showSuccessToast("Model updated");
-      void utils.nimitsJarvis.getInstance.invalidate();
+      void utils.chats.list.invalidate();
     },
     onError: trpcToastOnError,
   });
@@ -168,9 +174,8 @@ export function ModelSelector() {
   const handleSelect = (modelValue: string) => {
     setOpen(false);
     if (modelValue === currentModel) return;
-    
-    // Auto-save instantly — scoped to the active project instance
-    void updateSettings.mutateAsync({ instanceId, anthropicModel: modelValue });
+
+    void updateModel.mutateAsync({ chatId, model: modelValue });
   };
 
   if (isInstanceLoading) {
@@ -192,12 +197,12 @@ export function ModelSelector() {
           aria-expanded={open}
           className={cn(
             "max-w-[250px] justify-between text-xs font-normal text-muted-foreground hover:text-foreground",
-            updateSettings.isPending && "opacity-50 cursor-not-allowed"
+            updateModel.isPending && "opacity-50 cursor-not-allowed"
           )}
-          disabled={updateSettings.isPending}
+          disabled={updateModel.isPending}
         >
           <span className="truncate">
-            {updateSettings.isPending ? "Saving..." : (selectedItem ? selectedItem.label : "Select model...")}
+            {updateModel.isPending ? "Saving..." : (selectedItem ? selectedItem.label : "Select model...")}
           </span>
           <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
         </Button>

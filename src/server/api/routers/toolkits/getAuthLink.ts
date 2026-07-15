@@ -19,9 +19,9 @@ export const getAuthLink = protectedProcedure
       ? await decrypt(instance.composioApiKey)
       : null;
 
-    const composio = createComposioClientForInstance(decryptedApiKey);
-    // Scope connections precisely to the active project instance ID
-    const session = await composio.create(instance.id, {});
+const composio = createComposioClientForInstance(decryptedApiKey);
+  // Scope connections precisely to the active project instance ID
+  const session = await composio.create(instance.id, {});
 
     try {
       const connectionRequest = await session.authorize(input.toolkit, {

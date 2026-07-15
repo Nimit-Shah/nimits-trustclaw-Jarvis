@@ -6,10 +6,12 @@ import type { UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { trpc } from "~/clients/trpc";
 import { useInstanceId } from "~/hooks/use-instance-id";
+import { showErrorToast } from "~/components/core/toast-notifications";
 
-export function useChatHook({ initialMessages, streamId }: {
+export function useChatHook({ initialMessages, streamId, chatId }: {
   initialMessages: UIMessage[];
   streamId: string | null;
+  chatId: string;
 }) {
   const [instanceId] = useInstanceId();
   const utils = trpc.useUtils();
@@ -19,36 +21,41 @@ export function useChatHook({ initialMessages, streamId }: {
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: "/api/chat",
-      // prepareSendMessagesRequest fires right before each HTTP POST.
-      // requestMetadata is what was passed as `metadata` in sendMessage().
-      // We read isVoice from it and hoist it to the top-level body field
-      // so the server can parse it without any nested key lookups.
       prepareSendMessagesRequest: ({ messages, requestMetadata, body }) => ({
         body: {
           ...body,
-          messages,
-          // Pass the active project instanceId so the server scopes the run
-          // to the correct project. The server falls back to earliest-created
-          // instance when undefined.
+          messages: messages.map((msg) => ({
+            ...msg,
+            parts: (msg.parts ?? []).filter(
+              (p: { type: string }) => p.type !== "file",
+            ),
+          })),
           instanceId,
+          chatId,
           isVoice: (requestMetadata as { isVoice?: boolean } | undefined)?.isVoice ?? false,
         },
       }),
       prepareReconnectToStreamRequest: () => ({
-        api: `/api/chat?streamId=${streamId}`,
+        api: `/api/chat?streamId=${streamId}&chatId=${chatId}`,
       }),
     });
-  }, [streamId]);
+  }, [streamId, chatId, instanceId]);
 
   const chat = useChat({
-    id: "chat",
+    id: `chat-${chatId}`,
     transport,
     resume: streamId !== null,
     onFinish: () => {
       void utils.nimitsJarvis.getHistory.invalidate();
     },
-    onError: () => {
+    onError: (error) => {
       void utils.nimitsJarvis.getHistory.invalidate();
+      const msg = error.message || "An error occurred";
+      if (msg.includes("image")) {
+        showErrorToast("This model does not support image input. Please use text only.");
+      } else {
+        showErrorToast(msg);
+      }
     },
   });
 

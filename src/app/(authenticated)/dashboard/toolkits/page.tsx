@@ -8,10 +8,12 @@ export default async function Page({
 }) {
   const { instance } = await searchParams;
 
-  void trpcServer.api.toolkits.getToolkits.prefetchInfinite({
-    instanceId: instance,
-    limit: 20,
-  });
+  if (instance) {
+    void trpcServer.api.toolkits.getToolkits.prefetchInfinite({
+      instanceId: instance,
+      limit: 20,
+    });
+  }
 
   return (
     <HydrateClient>

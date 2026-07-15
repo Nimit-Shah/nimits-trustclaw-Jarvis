@@ -19,7 +19,7 @@ import { getModelProvider, resolveModelId } from "../model-utils";
 import { PIIVault } from "../pii";
 
 interface CompactionParams {
-  instanceId: string;
+  chatId: string;
   anthropicModel: string;
   messages: ReconstructedMessage[];
   keepRecentTokens: number;
@@ -192,7 +192,7 @@ function stripLargeToolResults(
 export async function runCompaction(
   params: CompactionParams,
 ): Promise<CompactionResult | null> {
-  const { instanceId, anthropicModel, messages, keepRecentTokens, previousSummary, compactionCount, compactionAttempts } = params;
+  const { chatId, anthropicModel, messages, keepRecentTokens, previousSummary, compactionCount, compactionAttempts } = params;
 
   // If compaction has failed multiple times in a row, skip this cycle
   // to avoid wasting tokens on a persistent failure (e.g., context too large
@@ -254,8 +254,8 @@ export async function runCompaction(
   const estimatedTokens = Math.ceil(summary.length / 4);
 
   try {
-    await db.composioClawInstance.update({
-      where: { id: instanceId, compactionCount },
+    await db.chat.update({
+      where: { id: chatId, compactionCount },
       data: {
         lastCompactionSummary: summary,
         compactionCount: { increment: 1 },
@@ -267,9 +267,9 @@ export async function runCompaction(
   } catch {
     // Optimistic lock failure — another compaction ran first, or a transient
     // DB error. Increment attempts to prevent rapid retry loops.
-    await db.composioClawInstance
+    await db.chat
       .update({
-        where: { id: instanceId },
+        where: { id: chatId },
         data: { compactionAttempts: { increment: 1 } },
       })
       .catch(() => {});
@@ -280,9 +280,9 @@ export async function runCompaction(
   // If the LLM calls failed but we still produced a fallback summary,
   // increment attempts so we don't keep retrying with a broken model.
   if (llmFailed) {
-    await db.composioClawInstance
+    await db.chat
       .update({
-        where: { id: instanceId },
+        where: { id: chatId },
         data: { compactionAttempts: { increment: 1 } },
       })
       .catch(() => {});

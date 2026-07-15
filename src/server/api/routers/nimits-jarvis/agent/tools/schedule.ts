@@ -6,6 +6,7 @@ import { scheduleSchema, type ScheduleInput } from "./schedule.schema";
 
 export function createScheduleTool(
   instanceId: string,
+  chatId: string,
   defaultTimezone: string,
 ): Tool<ScheduleInput, Record<string, unknown>> {
   return {
@@ -33,6 +34,7 @@ export function createScheduleTool(
             const job = await db.cronJob.create({
               data: {
                 instanceId,
+                chatId,
                 expression,
                 prompt,
                 timezone: tz,

@@ -17,9 +17,9 @@ export const getToolkits = protectedProcedure
       ? await decrypt(instance.composioApiKey)
       : null;
 
-    const composio = createComposioClientForInstance(decryptedApiKey);
-    // Use the project's own instance ID as Composio entityId to isolate connections
-    const session = await composio.create(instance.id, {});
+const composio = createComposioClientForInstance(decryptedApiKey);
+  // Use the project's own instance ID as Composio entityId to isolate connections
+  const session = await composio.create(instance.id, {});
 
     // 1. Fetch toolkit listing
     const toolkitsResult = await session.toolkits({

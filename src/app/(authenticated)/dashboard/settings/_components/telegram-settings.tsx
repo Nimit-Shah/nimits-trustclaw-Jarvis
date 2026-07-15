@@ -19,8 +19,10 @@ import {
   showSuccessToast,
   trpcToastOnError,
 } from "~/components/core/toast-notifications";
+import { useInstanceId } from "~/hooks/use-instance-id";
 
 export function TelegramSettings() {
+  const [instanceId] = useInstanceId();
   const [commandCopied, setCommandCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
   const utils = trpc.useUtils();
@@ -44,7 +46,7 @@ export function TelegramSettings() {
   // value. Derive isLinked directly from the query so we don't have to mirror
   // server state into local useState (the prior implementation did and needed
   // a useEffect to keep the two in sync — classic anti-pattern).
-  const { data: instanceData } = trpc.nimitsJarvis.getInstance.useQuery(undefined, {
+  const { data: instanceData } = trpc.nimitsJarvis.getInstance.useQuery({ instanceId }, {
     refetchInterval: telegramToken ? 3000 : false,
   });
   const isLinked = !!instanceData?.instance?.telegramChatId;

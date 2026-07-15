@@ -106,6 +106,7 @@ export function toPrismaJson(value: unknown): Prisma.InputJsonValue {
 
 export async function loadContextMessages(
   instanceId: string,
+  chatId: string,
   lastCompactionAt: Date | null,
 ) {
   // Prisma applies `take` at the database query level, so ordering matters
@@ -116,6 +117,7 @@ export async function loadContextMessages(
   const rows = await db.message.findMany({
     where: {
       instanceId,
+      chatId,
       messageType: "regular",
       ...(lastCompactionAt ? { createdAt: { gte: lastCompactionAt } } : {}),
     },
@@ -249,7 +251,8 @@ export function reconstructMessages(
 
 export async function runPostResponseTasks(params: {
   instanceId: string;
-  instance: {
+  chatId: string;
+  chat: {
     anthropicModel: string;
     compactionCount: number;
     compactionAttempts: number;
@@ -264,7 +267,8 @@ export async function runPostResponseTasks(params: {
 }): Promise<void> {
   const {
     instanceId,
-    instance,
+    chatId,
+    chat,
     contextTokens,
     settings,
     prunedMessages,
@@ -275,16 +279,17 @@ export async function runPostResponseTasks(params: {
     shouldFlushMemory(
       contextTokens,
       settings,
-      instance.compactionCount,
-      instance.memoryFlushCount,
+      chat.compactionCount,
+      chat.memoryFlushCount,
     )
   ) {
     try {
       await runMemoryFlush({
+        chatId,
         instanceId,
-        anthropicModel: instance.anthropicModel,
+        anthropicModel: chat.anthropicModel,
         messages: prunedMessages,
-        compactionCount: instance.compactionCount,
+        compactionCount: chat.compactionCount,
         piiVault,
       });
     } catch {
@@ -296,18 +301,19 @@ export async function runPostResponseTasks(params: {
     try {
       const freshDbMessages = await loadContextMessages(
         instanceId,
-        instance.lastCompactionAt,
+        chatId,
+        chat.lastCompactionAt,
       );
       const freshAiMessages = reconstructMessages(freshDbMessages);
 
       await runCompaction({
-        instanceId,
-        anthropicModel: instance.anthropicModel,
+        chatId,
+        anthropicModel: chat.anthropicModel,
         messages: freshAiMessages,
         keepRecentTokens: settings.keepRecentTokens,
-        previousSummary: instance.lastCompactionSummary,
-        compactionCount: instance.compactionCount,
-        compactionAttempts: instance.compactionAttempts,
+        previousSummary: chat.lastCompactionSummary,
+        compactionCount: chat.compactionCount,
+        compactionAttempts: chat.compactionAttempts,
       });
     } catch {
       // Compaction failure is non-fatal - next turn will retry
