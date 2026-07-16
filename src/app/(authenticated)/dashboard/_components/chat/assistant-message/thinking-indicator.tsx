@@ -15,7 +15,7 @@ export function ThinkingIndicator() {
 
   return (
     <div className="py-2">
-      <span className="text-muted-foreground animate-pulse text-sm font-medium">
+      <span className="text-muted-foreground/60 animate-pulse text-[12px] font-medium">
         {THINKING_WORDS[index]}...
       </span>
     </div>

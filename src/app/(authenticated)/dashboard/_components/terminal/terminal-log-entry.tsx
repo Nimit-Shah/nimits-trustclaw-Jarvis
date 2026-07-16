@@ -55,11 +55,11 @@ export function TerminalLogEntry({ log }: { log: TerminalLogEntryData }) {
   return (
     <div
       id={`tool-log-${log.id}`}
-      className="border-b border-border/50 py-3 font-mono text-xs transition-all last:border-0"
+      className="border-b border-border/30 py-2 font-mono text-[11px] transition-all last:border-0"
     >
       <div className="flex w-full items-center gap-2 text-left">
-        <span className="text-muted-foreground/60">{">"}</span>
-        <span className="text-sm font-semibold text-foreground/90">
+        <span className="text-muted-foreground/40">{">"}</span>
+        <span className="text-[11px] font-semibold text-foreground/80">
           {log.toolName}
         </span>
         <span
@@ -79,16 +79,16 @@ export function TerminalLogEntry({ log }: { log: TerminalLogEntryData }) {
       </div>
 
       {multiExec && (
-        <div className="mt-1.5 space-y-0 pl-5">
+        <div className="mt-1 space-y-0 pl-5">
           {multiExec.thought && (
-            <div className="py-1 text-muted-foreground">
+            <div className="py-0.5 text-[10px] text-muted-foreground">
               {multiExec.thought}
             </div>
           )}
           {multiExec.tools.map((tool, i) => (
             <div
               key={i}
-              className="border-b border-border/30 py-1 last:border-0"
+              className="border-b border-border/20 py-0.5 last:border-0"
             >
               <div className="flex items-center gap-2">
                 <span className="shrink-0 text-[10px] text-muted-foreground/60">
@@ -132,17 +132,17 @@ export function TerminalLogEntry({ log }: { log: TerminalLogEntryData }) {
       )}
 
       {multiExec && (hasResult || log.status === "executing") && (
-        <div className="ml-5 mt-2 max-h-60 overflow-y-auto rounded border border-border p-3">
+        <div className="ml-5 mt-1.5 max-h-48 overflow-y-auto rounded border border-border/30 p-2">
           {hasResult && (
             <div>
-              <span className="text-chart-2">◂ Result:</span>
-              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-muted-foreground">
+              <span className="text-[10px] text-chart-2">Result</span>
+              <pre className="mt-0.5 overflow-x-auto whitespace-pre-wrap text-[10px] text-muted-foreground/70">
                 {formatJson(log.result)}
               </pre>
             </div>
           )}
           {!hasResult && log.status === "executing" && (
-            <span className="text-chart-4">◂ Awaiting response…</span>
+            <span className="text-[10px] text-chart-4">Awaiting response…</span>
           )}
         </div>
       )}
@@ -170,11 +170,11 @@ export function TerminalLogEntry({ log }: { log: TerminalLogEntryData }) {
         !workbenchData &&
         !connectionData &&
         (hasArgs || hasResult || log.status === "executing") && (
-          <div className="ml-5 mt-2 max-h-60 overflow-y-auto rounded border border-border p-3">
+          <div className="ml-5 mt-1.5 max-h-48 overflow-y-auto rounded border border-border/30 p-2">
             {hasArgs && (
               <div>
-                <span className="text-chart-4">▸ Args:</span>
-                <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-muted-foreground">
+                <span className="text-[10px] text-chart-4">Args</span>
+                <pre className="mt-0.5 overflow-x-auto whitespace-pre-wrap text-[10px] text-muted-foreground/70">
                   {formatJson(log.args)}
                 </pre>
               </div>
@@ -182,11 +182,11 @@ export function TerminalLogEntry({ log }: { log: TerminalLogEntryData }) {
             {hasResult && (
               <div
                 className={cn(
-                  hasArgs && "mt-3 border-t border-border pt-3",
+                  hasArgs && "mt-2 border-t border-border/20 pt-2",
                 )}
               >
-                <span className="text-chart-2">◂ Result:</span>
-                <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-muted-foreground">
+                <span className="text-[10px] text-chart-2">Result</span>
+                <pre className="mt-0.5 overflow-x-auto whitespace-pre-wrap text-[10px] text-muted-foreground/70">
                   {formatJson(log.result)}
                 </pre>
               </div>
@@ -194,10 +194,10 @@ export function TerminalLogEntry({ log }: { log: TerminalLogEntryData }) {
             {log.status === "executing" && !hasResult && (
               <div
                 className={cn(
-                  hasArgs && "mt-3 border-t border-border pt-3",
+                  hasArgs && "mt-2 border-t border-border/20 pt-2",
                 )}
               >
-                <span className="text-chart-4">◂ Awaiting response…</span>
+                <span className="text-[10px] text-chart-4">Awaiting response…</span>
               </div>
             )}
           </div>

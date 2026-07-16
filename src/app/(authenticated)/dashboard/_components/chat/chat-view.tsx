@@ -4,16 +4,16 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Virtuoso } from "react-virtuoso";
 import type { VirtuosoHandle } from "react-virtuoso";
 import type { UIMessage } from "@ai-sdk/react";
-import { Loader2, ArrowDown } from "lucide-react";
+import { Loader2, PanelRight } from "lucide-react";
 import { ErrorBoundary } from "~/components/core/error-boundary";
 import { Button } from "~/components/ui/button";
+import { showErrorToast } from "~/components/core/toast-notifications";
 import { useTerminalStore } from "../terminal-store";
 import { useChatContext } from "../chat-context";
 import { UserMessage } from "./user-message";
 import { AssistantMessage } from "./assistant-message/assistant-message";
 import { ThinkingIndicator } from "./assistant-message/thinking-indicator";
 import { ChatInput } from "./chat-input";
-import { TerminalPane } from "../terminal/terminal-pane";
 import { useJarvisVoice } from "./use-jarvis-voice";
 import { VoiceModeOverlay } from "./voice-mode-overlay";
 
@@ -41,11 +41,24 @@ export function ChatView() {
   } = useChatContext();
   const terminalOpen = useTerminalStore((s) => s.terminalOpen);
   const setTerminalOpen = useTerminalStore((s) => s.setTerminalOpen);
+  const setScrollToBottom = useTerminalStore((s) => s.setScrollToBottom);
   const isEmpty = messages.length === 0;
 
   const [firstItemIndex, setFirstItemIndex] = useState(START_INDEX);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
-  const [atBottom, setAtBottom] = useState(true);
+
+  // Register scroll-to-bottom function in store so sidebar can trigger it
+  const handleScrollToBottom = useCallback(() => {
+    virtuosoRef.current?.scrollToIndex({
+      index: "LAST",
+      align: "end",
+      behavior: "smooth",
+    });
+  }, []);
+
+  useEffect(() => {
+    setScrollToBottom(handleScrollToBottom);
+  }, [handleScrollToBottom, setScrollToBottom]);
 
   const prevMessageCountRef = useRef(messages.length);
   const prevFirstIdRef = useRef<string | null>(null);
@@ -138,16 +151,49 @@ export function ChatView() {
   });
 
 
-  const handleScrollToBottom = useCallback(() => {
-    virtuosoRef.current?.scrollToIndex({
-      index: "LAST",
-      align: "end",
-      behavior: "smooth",
-    });
+  // Global drop blocker — prevent file drops anywhere in the chat area
+  useEffect(() => {
+    const handler = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes("Files")) {
+        e.preventDefault();
+        showErrorToast("This model does not support image or file input");
+      }
+    };
+    document.addEventListener("dragover", handler, { capture: true });
+    document.addEventListener("drop", handler, { capture: true });
+    return () => {
+      document.removeEventListener("dragover", handler, { capture: true });
+      document.removeEventListener("drop", handler, { capture: true });
+    };
   }, []);
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div
+      className="relative flex h-full overflow-hidden"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "none";
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showErrorToast("This model does not support image or file input");
+      }}
+      onPaste={(e) => {
+        // Block image paste at the container level (catches bubbles from textarea)
+        const items = e.clipboardData?.items;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            if (items[i]!.kind === "file") {
+              e.preventDefault();
+              showErrorToast("This model does not support image input");
+              return;
+            }
+          }
+        }
+      }}
+    >
       <div className="flex min-w-0 flex-1 flex-col">
         {isEmpty ? (
           <div className="flex h-full flex-col items-center justify-center gap-6">
@@ -180,13 +226,22 @@ export function ChatView() {
         ) : (
           <>
             <div className="relative min-h-0 flex-1">
+              {/* Terminal toggle — top-right corner */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTerminalOpen(!terminalOpen)}
+                className="absolute right-3 top-3 z-10 size-7 text-muted-foreground/50 hover:text-muted-foreground hover:bg-accent/50"
+                title={terminalOpen ? "Hide tool execution" : "Show tool execution"}
+              >
+                <PanelRight className="size-3.5" />
+              </Button>
               <Virtuoso
                 ref={virtuosoRef}
                 data={messages}
                 firstItemIndex={firstItemIndex}
                 initialTopMostItemIndex={{ index: "LAST", align: "end" }}
                 startReached={handleStartReached}
-                atBottomStateChange={setAtBottom}
                 atBottomThreshold={50}
                 increaseViewportBy={{ top: 200, bottom: 0 }}
                 components={{
@@ -241,17 +296,6 @@ export function ChatView() {
                 }
                 className="!overflow-y-auto"
               />
-
-              {!atBottom && !isEmpty && (
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleScrollToBottom}
-                  className="absolute bottom-4 left-1/2 size-10 -translate-x-1/2 rounded-full shadow-md"
-                >
-                  <ArrowDown className="size-4" />
-                </Button>
-              )}
             </div>
 
             <ChatInput
@@ -279,12 +323,6 @@ export function ChatView() {
         onClose={jarvis.closeVoiceMode}
         onRequestMicPermission={jarvis.requestMicPermission}
       />
-
-      {terminalOpen && (
-        <div className="hidden w-[400px] shrink-0 border-l border-border md:block lg:w-[500px]">
-          <TerminalPane messages={messages} status={status} onHide={() => setTerminalOpen(false)} />
-        </div>
-      )}
     </div>
   );
 }

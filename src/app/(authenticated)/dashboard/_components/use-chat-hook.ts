@@ -24,12 +24,22 @@ export function useChatHook({ initialMessages, streamId, chatId }: {
       prepareSendMessagesRequest: ({ messages, requestMetadata, body }) => ({
         body: {
           ...body,
-          messages: messages.map((msg) => ({
-            ...msg,
-            parts: (msg.parts ?? []).filter(
-              (p: { type: string }) => p.type !== "file",
-            ),
-          })),
+          messages: messages.map((msg) => {
+            const textParts = (msg.parts ?? []).filter(
+              (p): p is { type: "text"; text: string } =>
+                p.type === "text" && typeof (p as { text?: string }).text === "string",
+            );
+            return {
+              ...msg,
+              parts: textParts.map((p) => ({
+                ...p,
+                text: p.text.replace(
+                  /(?:^|\s)[\w-]+\.(?:png|jpg|jpeg|gif|webp|svg|bmp|tiff)(?:\s|$)/gi,
+                  " ",
+                ),
+              })),
+            };
+          }),
           instanceId,
           chatId,
           isVoice: (requestMetadata as { isVoice?: boolean } | undefined)?.isVoice ?? false,

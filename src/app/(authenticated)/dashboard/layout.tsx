@@ -1,6 +1,7 @@
-import { ErrorBoundary } from "~/components/core/error-boundary";
 import { TooltipProvider } from "~/components/ui/tooltip";
-import { DashboardNavbar } from "./_components/dashboard-navbar";
+import { Sidebar } from "./_components/sidebar";
+import { TerminalPanel } from "./_components/terminal-panel";
+import { MobileSidebar } from "./_components/mobile-sidebar";
 
 export default function DashboardLayout({
   children,
@@ -9,13 +10,30 @@ export default function DashboardLayout({
 }) {
   return (
     <TooltipProvider>
-      <div className="flex h-screen flex-col">
-        <ErrorBoundary>
-          <DashboardNavbar />
-        </ErrorBoundary>
-        <main className="min-h-0 flex-1 flex">
+      <div className="flex h-screen flex-col overflow-hidden">
+        {/* Mobile header + sheet sidebar */}
+        <MobileSidebar />
+
+        {/* Desktop: fixed sidebar + flex content + optional terminal */}
+        <div className="hidden md:flex flex-1 min-h-0">
+          {/* Left sidebar — fixed 280px, never resizes */}
+          <aside className="w-[280px] shrink-0 border-r border-border overflow-hidden">
+            <Sidebar />
+          </aside>
+
+          {/* Center content — fills remaining space */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            {children}
+          </div>
+
+          {/* Right terminal panel — conditionally rendered, resizable */}
+          <TerminalPanel />
+        </div>
+
+        {/* Mobile: full-width content */}
+        <div className="flex md:hidden flex-1 min-h-0">
           {children}
-        </main>
+        </div>
       </div>
     </TooltipProvider>
   );

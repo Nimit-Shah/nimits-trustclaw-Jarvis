@@ -86,9 +86,9 @@ export function ChatInput({ onSend, onStop, status, chatId, voice }: ChatInputPr
       : null;
 
   return (
-    <div className="border-border bg-background border-t p-3 md:p-4">
+    <div className="border-border/50 bg-background border-t p-3 md:p-4">
       <div className="mx-auto flex max-w-3xl flex-col gap-2">
-        <div className="relative flex flex-col rounded-3xl border border-border bg-muted/30 p-3 shadow-sm focus-within:ring-1 focus-within:ring-ring">
+        <div className="relative flex flex-col rounded-2xl border border-border/60 bg-muted/20 p-2.5 shadow-sm focus-within:ring-1 focus-within:ring-ring/40">
           <Textarea
             ref={textareaRef}
             value={input}
@@ -103,8 +103,8 @@ export function ChatInput({ onSend, onStop, status, chatId, voice }: ChatInputPr
             disabled={isStreaming}
             rows={1}
             className={cn(
-              "max-h-[200px] min-h-[44px] resize-none border-0 bg-transparent text-base shadow-none focus-visible:ring-0 md:text-sm",
-              "placeholder:text-muted-foreground/50",
+              "max-h-[200px] min-h-[40px] resize-none border-0 bg-transparent text-[13px] shadow-none focus-visible:ring-0",
+              "placeholder:text-muted-foreground/40",
             )}
           />
 
