@@ -6,7 +6,7 @@
  * clean switch instead of ad-hoc string checks.
  */
 
-export type ModelProvider = "ollama" | "anthropic" | "vercel-gateway" | "openrouter";
+export type ModelProvider = "ollama" | "anthropic" | "openrouter";
 
 const ANTHROPIC_MODEL_PREFIXES = [
   "claude-",
@@ -16,11 +16,11 @@ const ANTHROPIC_MODEL_PREFIXES = [
 /**
  * Determines the provider category for a given model ID.
  *
- * - `"ollama"` — local Ollama models (currently only `qwen3:8b`)
+ * - `"ollama"` — local Ollama models (e.g. `qwen3:8b`)
  * - `"anthropic"` — Anthropic models, either bare (`claude-sonnet-4-5-…`)
  *   or namespaced (`anthropic/claude-…`)
- * - `"vercel-gateway"` — anything else routed through the Vercel AI Gateway
- *   (identified by a `/` in the ID, e.g. `openai/gpt-4o-mini`)
+ * - `"openrouter"` — anything else with a `/` prefix (e.g. `openrouter/deepseek/…`,
+ *   `openai/gpt-4o-mini`) routed through OpenRouter
  */
 export function getModelProvider(modelId: string): ModelProvider {
   if (modelId.startsWith("openrouter/")) {
@@ -34,7 +34,7 @@ export function getModelProvider(modelId: string): ModelProvider {
   }
 
   if (modelId.includes("/")) {
-    return "vercel-gateway";
+    return "openrouter";
   }
 
   return "ollama";
@@ -49,11 +49,12 @@ export function isAnthropicModel(modelId: string): boolean {
 }
 
 /**
- * Resolves a model ID string into the format expected by the Vercel AI SDK.
+ * Resolves a model ID string into the format expected by the AI SDK.
  *
  * - Ollama models → handled separately via `ollamaProvider()`
- * - Vercel Gateway models (contain `/`) → used as-is
+ * - OpenRouter models → strip `openrouter/` prefix
  * - Bare Anthropic model names → prefixed with `anthropic/`
+ * - Other `/` models → used as-is (OpenRouter compatible)
  */
 export function resolveModelId(modelId: string): string {
   if (modelId.startsWith("openrouter/")) {

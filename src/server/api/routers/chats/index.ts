@@ -5,7 +5,6 @@ import { rename } from "./rename";
 import { deleteChat } from "./delete";
 import { updateModel } from "./updateModel";
 import { search } from "./search";
-import { issuesCount } from "./issues-count";
 
 export const chatsRouter = router({
   list,
@@ -14,5 +13,4 @@ export const chatsRouter = router({
   delete: deleteChat,
   updateModel,
   search,
-  issuesCount,
 });

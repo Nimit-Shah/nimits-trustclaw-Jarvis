@@ -17,7 +17,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
   sse: {
-    maxDurationMs: 50_000, // Close gracefully before Vercel's serverless function timeout
+    maxDurationMs: 50_000, // Close gracefully before serverless function timeout
     ping: {
       enabled: true,
       intervalMs: 15_000,

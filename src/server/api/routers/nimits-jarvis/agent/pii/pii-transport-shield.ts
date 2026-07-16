@@ -2,7 +2,7 @@
  * PII Transport Shield — Final network-layer interceptor.
  *
  * This is the **last line of defense** before any payload leaves the
- * runtime and hits an external LLM API (OpenRouter, Vercel AI Gateway,
+ * runtime and hits an external LLM API (OpenRouter, Anthropic direct,
  * Anthropic, etc.).
  *
  * Unlike the existing PIIVault (which is opt-in and applied per-layer),

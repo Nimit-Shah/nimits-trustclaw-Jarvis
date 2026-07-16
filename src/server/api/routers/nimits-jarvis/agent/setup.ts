@@ -217,7 +217,7 @@ export async function prepareAgentRun(
   // Add cache breakpoint to last history message (before new user message)
   // so the conversation prefix is cached across turns.
   // Only apply Anthropic-specific cacheControl for Anthropic models —
-  // non-Anthropic Vercel Gateway models (OpenAI, DeepSeek, Google) don't
+  // non-Anthropic models (OpenAI, DeepSeek, Google) don't
   // understand this option and may reject the request.
   // Only user/assistant messages support cacheControl; tool messages reject it.
   if (useAnthropicOptions && prunedMessages.length >= 2) {
@@ -315,8 +315,8 @@ export async function prepareAgentRun(
     instructions: {
       role: "system",
       content: safeSystemPrompt,
-      // Only inject Anthropic cacheControl for Anthropic models.
-      // Other Vercel Gateway providers don't support this option.
+    // Only inject Anthropic cacheControl for Anthropic models.
+    // Other providers don't support this option.
       ...(useAnthropicOptions && {
         providerOptions: {
           anthropic: { cacheControl: { type: "ephemeral" } },

@@ -24,14 +24,11 @@ export const updateSettings = protectedProcedure
           ...(input.name && { name: input.name }),
           ...(encryptedApiKey !== undefined && {
             composioApiKey: encryptedApiKey,
-            composioProjectId: null, // Reset project ID on API key update to trigger re-fetch
+            composioProjectId: null,
           }),
           ...(input.anthropicModel && { anthropicModel: input.anthropicModel }),
           ...(input.piiRedactionEnabled !== undefined && {
             piiRedactionEnabled: input.piiRedactionEnabled,
-          }),
-          ...(input.vercelGatewayEnabled !== undefined && {
-            vercelGatewayEnabled: input.vercelGatewayEnabled,
           }),
           ...(input.openRouterGatewayEnabled !== undefined && {
             openRouterGatewayEnabled: input.openRouterGatewayEnabled,
@@ -42,7 +39,6 @@ export const updateSettings = protectedProcedure
           name: true,
           anthropicModel: true,
           piiRedactionEnabled: true,
-          vercelGatewayEnabled: true,
           openRouterGatewayEnabled: true,
           updatedAt: true,
         },

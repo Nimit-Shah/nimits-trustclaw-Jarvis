@@ -1,6 +1,5 @@
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { Sidebar } from "./_components/sidebar";
-import { TerminalPanel } from "./_components/terminal-panel";
 import { MobileSidebar } from "./_components/mobile-sidebar";
 
 export default function DashboardLayout({
@@ -14,9 +13,9 @@ export default function DashboardLayout({
         {/* Mobile header + sheet sidebar */}
         <MobileSidebar />
 
-        {/* Desktop: fixed sidebar + flex content + optional terminal */}
+        {/* Desktop: fixed sidebar + flex content */}
         <div className="hidden md:flex flex-1 min-h-0">
-          {/* Left sidebar — fixed 280px, never resizes */}
+          {/* Left sidebar — fixed 280px */}
           <aside className="w-[280px] shrink-0 border-r border-border overflow-hidden">
             <Sidebar />
           </aside>
@@ -25,9 +24,6 @@ export default function DashboardLayout({
           <div className="flex-1 min-w-0 flex flex-col">
             {children}
           </div>
-
-          {/* Right terminal panel — conditionally rendered, resizable */}
-          <TerminalPanel />
         </div>
 
         {/* Mobile: full-width content */}

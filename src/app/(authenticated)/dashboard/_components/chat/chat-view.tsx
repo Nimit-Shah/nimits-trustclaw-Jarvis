@@ -4,11 +4,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Virtuoso } from "react-virtuoso";
 import type { VirtuosoHandle } from "react-virtuoso";
 import type { UIMessage } from "@ai-sdk/react";
-import { Loader2, PanelRight } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { ErrorBoundary } from "~/components/core/error-boundary";
-import { Button } from "~/components/ui/button";
 import { showErrorToast } from "~/components/core/toast-notifications";
-import { useTerminalStore } from "../terminal-store";
 import { useChatContext } from "../chat-context";
 import { UserMessage } from "./user-message";
 import { AssistantMessage } from "./assistant-message/assistant-message";
@@ -39,9 +37,6 @@ export function ChatView() {
     isFetchingOlderMessages,
     chatId,
   } = useChatContext();
-  const terminalOpen = useTerminalStore((s) => s.terminalOpen);
-  const setTerminalOpen = useTerminalStore((s) => s.setTerminalOpen);
-  const setScrollToBottom = useTerminalStore((s) => s.setScrollToBottom);
   const isEmpty = messages.length === 0;
 
   const [firstItemIndex, setFirstItemIndex] = useState(START_INDEX);
@@ -55,10 +50,6 @@ export function ChatView() {
       behavior: "smooth",
     });
   }, []);
-
-  useEffect(() => {
-    setScrollToBottom(handleScrollToBottom);
-  }, [handleScrollToBottom, setScrollToBottom]);
 
   const prevMessageCountRef = useRef(messages.length);
   const prevFirstIdRef = useRef<string | null>(null);
@@ -226,16 +217,6 @@ export function ChatView() {
         ) : (
           <>
             <div className="relative min-h-0 flex-1">
-              {/* Terminal toggle — top-right corner */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTerminalOpen(!terminalOpen)}
-                className="absolute right-3 top-3 z-10 size-7 text-muted-foreground/50 hover:text-muted-foreground hover:bg-accent/50"
-                title={terminalOpen ? "Hide tool execution" : "Show tool execution"}
-              >
-                <PanelRight className="size-3.5" />
-              </Button>
               <Virtuoso
                 ref={virtuosoRef}
                 data={messages}
@@ -288,7 +269,6 @@ export function ChatView() {
                         <AssistantMessage
                           message={message}
                           status={message.id === lastMessage?.id ? status : "ready"}
-                          onOpenTerminal={() => setTerminalOpen(true)}
                         />
                       </ErrorBoundary>
                     </div>

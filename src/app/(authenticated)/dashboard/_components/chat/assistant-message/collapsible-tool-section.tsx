@@ -36,13 +36,11 @@ function getDisplayName(name: string): string {
 interface CollapsibleToolSectionProps {
   toolCalls: AnyToolUIPart[];
   isRunning: boolean;
-  onOpenTerminal: () => void;
 }
 
 export function CollapsibleToolSection({
   toolCalls,
   isRunning,
-  onOpenTerminal,
 }: CollapsibleToolSectionProps) {
   const [open, setOpen] = useState(isRunning);
 
@@ -98,7 +96,6 @@ export function CollapsibleToolSection({
             <ToolCallCard
               key={tc.toolCallId}
               toolCall={tc}
-              onOpenTerminal={onOpenTerminal}
             />
           ))}
         </div>
@@ -109,10 +106,9 @@ export function CollapsibleToolSection({
 
 interface ToolCallCardProps {
   toolCall: AnyToolUIPart;
-  onOpenTerminal: () => void;
 }
 
-function ToolCallCard({ toolCall, onOpenTerminal }: ToolCallCardProps) {
+function ToolCallCard({ toolCall }: ToolCallCardProps) {
   const name = getToolName(toolCall);
   const displayName = getDisplayName(name);
   const isRunning =
@@ -154,7 +150,6 @@ function ToolCallCard({ toolCall, onOpenTerminal }: ToolCallCardProps) {
       onClick={(e) => {
         e.stopPropagation();
         if (hasArgs || hasResult) setExpanded(!expanded);
-        onOpenTerminal();
       }}
     >
       <div className="flex items-center gap-1.5">

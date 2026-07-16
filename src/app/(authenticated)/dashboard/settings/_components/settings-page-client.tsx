@@ -55,13 +55,12 @@ export function SettingsPageClient() {
         <h1 className="text-xl font-semibold md:text-2xl">Settings</h1>
       </div>
 
-      <ErrorBoundary>
-        <ModelSettings
-          piiRedactionEnabled={instance.piiRedactionEnabled}
-          vercelGatewayEnabled={instance.vercelGatewayEnabled}
-          openRouterGatewayEnabled={instance.openRouterGatewayEnabled}
-        />
-      </ErrorBoundary>
+        <ErrorBoundary>
+          <ModelSettings
+            piiRedactionEnabled={instance.piiRedactionEnabled}
+            openRouterGatewayEnabled={instance.openRouterGatewayEnabled}
+          />
+        </ErrorBoundary>
 
       {data?.telegramConfigured && (
         <ErrorBoundary>

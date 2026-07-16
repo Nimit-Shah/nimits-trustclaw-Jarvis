@@ -15,7 +15,6 @@ import { getMemories } from "./getMemories";
 import { getIntegrationAuthLinks } from "./getIntegrationAuthLinks";
 import { saveOnboardingState } from "./saveOnboardingState";
 import { checkConnectionStatus } from "./checkConnectionStatus";
-import { getVercelModels } from "./getVercelModels";
 import { getOpenRouterModels } from "./getOpenRouterModels";
 import { getLocalModels } from "./getLocalModels";
 
@@ -36,7 +35,6 @@ export const nimitsJarvisRouter = router({
   getIntegrationAuthLinks,
   saveOnboardingState,
   checkConnectionStatus,
-  getVercelModels,
   getOpenRouterModels,
   getLocalModels,
 });

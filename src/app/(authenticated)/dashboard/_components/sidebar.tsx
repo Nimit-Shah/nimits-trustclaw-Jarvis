@@ -16,8 +16,6 @@ import {
   ChevronDown,
   Check,
   User,
-  PanelRight,
-  ArrowDown,
 } from "lucide-react";
 import { trpc } from "~/clients/trpc";
 import { useInstanceId } from "~/hooks/use-instance-id";
@@ -26,7 +24,6 @@ import { ErrorDisplay } from "~/components/core/error-display";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
-import { Badge } from "~/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -52,7 +49,6 @@ import {
 import { authClient } from "~/clients/auth/react";
 import { cn } from "~/lib/utils";
 import { useTheme } from "next-themes";
-import { useTerminalStore } from "./terminal-store";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
@@ -70,9 +66,6 @@ export function Sidebar() {
 
   const utils = trpc.useUtils();
   const { resolvedTheme, setTheme } = useTheme();
-  const terminalOpen = useTerminalStore((s) => s.terminalOpen);
-  const setTerminalOpen = useTerminalStore((s) => s.setTerminalOpen);
-  const scrollToBottom = useTerminalStore((s) => s.scrollToBottom);
 
   const { data: chats, isLoading, error, refetch } = trpc.chats.list.useQuery(
     { instanceId },
@@ -84,18 +77,12 @@ export function Sidebar() {
     { enabled: true },
   );
 
-  const { data: issuesData } = trpc.chats.issuesCount.useQuery(
-    { instanceId },
-    { staleTime: 10_000, refetchInterval: 30_000 },
-  );
-
   const instances = instanceData?.instances ?? [];
   const activeInstanceId = instanceId ?? instanceData?.instance?.id;
   const activeInstanceName =
     instances.find((i) => i.id === activeInstanceId)?.name ??
     instanceData?.instance?.name ??
     "Project";
-  const issueCount = issuesData?.count ?? 0;
 
   const createChat = trpc.chats.create.useMutation({
     onSuccess: (newChat) => {
@@ -114,7 +101,6 @@ export function Sidebar() {
   const deleteChatMut = trpc.chats.delete.useMutation({
     onSuccess: () => {
       void utils.chats.list.invalidate();
-      void utils.chats.issuesCount.invalidate();
       setDeleteTarget(null);
       if (chats && chats.length > 1) {
         const remaining = chats.filter((c) => c.id !== deleteTarget);
@@ -174,7 +160,6 @@ export function Sidebar() {
     try { localStorage.setItem("nimits-jarvis-active-instance", id); } catch {}
     void utils.nimitsJarvis.getInstance.invalidate();
     void utils.chats.list.invalidate();
-    void utils.chats.issuesCount.invalidate();
     setProjectOpen(false);
   };
 
@@ -243,9 +228,9 @@ export function Sidebar() {
           <Button
             variant={pathname.startsWith("/dashboard/toolkits") ? "secondary" : "ghost"}
             size="sm"
-            className="w-full h-7 justify-start gap-2 text-[11px] text-muted-foreground"
+            className="w-full h-8 justify-start gap-2 text-xs text-muted-foreground"
           >
-            <Puzzle className="size-3" />
+            <Puzzle className="size-3.5" />
             Toolkits
           </Button>
         </Link>
@@ -253,9 +238,9 @@ export function Sidebar() {
           <Button
             variant={pathname.startsWith("/dashboard/settings") ? "secondary" : "ghost"}
             size="sm"
-            className="w-full h-7 justify-start gap-2 text-[11px] text-muted-foreground"
+            className="w-full h-8 justify-start gap-2 text-xs text-muted-foreground"
           >
-            <Settings className="size-3" />
+            <Settings className="size-3.5" />
             Settings
           </Button>
         </Link>
@@ -383,16 +368,9 @@ export function Sidebar() {
       <div className="shrink-0 p-3">
         <Popover open={profileOpen} onOpenChange={setProfileOpen}>
           <PopoverTrigger asChild>
-            <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/30 relative">
-              <div className="relative">
-                <div className="size-7 rounded-full bg-muted flex items-center justify-center">
-                  <User className="size-3.5 text-muted-foreground" />
-                </div>
-                {issueCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-                    {issueCount > 99 ? "99+" : issueCount}
-                  </span>
-                )}
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/30">
+              <div className="size-7 rounded-full bg-muted flex items-center justify-center">
+                <User className="size-3.5 text-muted-foreground" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[12px] font-medium text-foreground">
@@ -402,46 +380,6 @@ export function Sidebar() {
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-48 p-1" align="start" side="top">
-            <button
-              onClick={() => {
-                scrollToBottom();
-                setProfileOpen(false);
-              }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <ArrowDown className="size-3.5" />
-              <span className="flex-1">Scroll to bottom</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setTerminalOpen(!terminalOpen);
-                setProfileOpen(false);
-              }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <PanelRight className="size-3.5" />
-              <span className="flex-1">{terminalOpen ? "Hide Tools" : "Show Tools"}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setTerminalOpen(true);
-                setProfileOpen(false);
-              }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <PanelRight className="size-3.5" />
-              <span className="flex-1">Issues</span>
-              {issueCount > 0 && (
-                <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[9px]">
-                  {issueCount}
-                </Badge>
-              )}
-            </button>
-
-            <Separator className="my-1" />
-
             <button
               onClick={() => {
                 setTheme(resolvedTheme === "dark" ? "light" : "dark");

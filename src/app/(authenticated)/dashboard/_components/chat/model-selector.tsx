@@ -21,11 +21,10 @@ export function ModelSelector({ chatId }: ModelSelectorProps) {
   const [instanceId] = useInstanceId();
   const { data: instance, isLoading: isInstanceLoading } = trpc.nimitsJarvis.getInstance.useQuery({ instanceId });
   const { data: chats } = trpc.chats.list.useQuery({ instanceId });
-  const { data: vercelModels, isLoading: isLoadingVercel } = trpc.nimitsJarvis.getVercelModels.useQuery();
   const { data: openRouterModels, isLoading: isLoadingOpenRouter } = trpc.nimitsJarvis.getOpenRouterModels.useQuery();
   const { data: localModels, isLoading: isLoadingLocal } = trpc.nimitsJarvis.getLocalModels.useQuery();
 
-  const isLoading = isLoadingVercel || isLoadingOpenRouter || isLoadingLocal || isInstanceLoading;
+  const isLoading = isLoadingOpenRouter || isLoadingLocal || isInstanceLoading;
   const currentChat = chats?.find((c) => c.id === chatId);
   const currentModel = currentChat?.model ?? instance?.instance?.anthropicModel ?? "qwen3:8b";
 
@@ -59,7 +58,6 @@ export function ModelSelector({ chatId }: ModelSelectorProps) {
         });
       });
     } else {
-      // Fallback local model if no endpoint available or empty
       list.push({
         value: "qwen3:8b",
         label: "Ollama Qwen3 8B (Local)",
@@ -68,25 +66,7 @@ export function ModelSelector({ chatId }: ModelSelectorProps) {
       });
     }
 
-    const vercelGatewayEnabled = instance?.instance?.vercelGatewayEnabled ?? true;
     const openRouterGatewayEnabled = instance?.instance?.openRouterGatewayEnabled ?? true;
-
-    if (vercelGatewayEnabled && vercelModels && vercelModels.length > 0) {
-      vercelModels.forEach((vm) => {
-        const parts = vm.id.split("/");
-        const provider = parts[0] || "other";
-        const modelName = vm.name || parts[1] || vm.id;
-
-        if (vm.id !== "qwen3:8b") {
-          list.push({
-            value: vm.id,
-            label: modelName,
-            provider,
-            description: "Vercel AI Gateway model",
-          });
-        }
-      });
-    }
 
     if (openRouterGatewayEnabled && openRouterModels && openRouterModels.length > 0) {
       openRouterModels.forEach((om) => {
@@ -97,31 +77,8 @@ export function ModelSelector({ chatId }: ModelSelectorProps) {
           description: "OpenRouter model",
         });
       });
-    } else if (vercelGatewayEnabled && !isLoading) {
-      // Fallback static Anthropic models via Vercel Gateway when API is empty/failed
-      list.push(
-        {
-          value: "claude-opus-4-6",
-          label: "Claude Opus 4.6",
-          provider: "anthropic",
-          description: "Most capable",
-        },
-        {
-          value: "claude-sonnet-4-5-20250929",
-          label: "Claude Sonnet 4.5",
-          provider: "anthropic",
-          description: "Balanced",
-        },
-        {
-          value: "claude-haiku-4-5-20251001",
-          label: "Claude Haiku 4.5",
-          provider: "anthropic",
-          description: "Fast & affordable",
-        }
-      );
     }
 
-    // Ensure currently selected model is in the list
     if (currentModel && !list.some((m) => m.value === currentModel)) {
       const parts = currentModel.split("/");
       const provider = parts.length > 1 ? parts[0]! : "custom";
@@ -135,7 +92,7 @@ export function ModelSelector({ chatId }: ModelSelectorProps) {
     }
 
     return list;
-  }, [vercelModels, openRouterModels, localModels, isLoading, currentModel]);
+  }, [openRouterModels, localModels, isLoading, currentModel, instance]);
 
   const filteredModels = useMemo(() => {
     if (!search.trim()) return allModels;
@@ -163,8 +120,6 @@ export function ModelSelector({ chatId }: ModelSelectorProps) {
     return Object.keys(grouped).sort((a, b) => {
       if (a === "local") return -1;
       if (b === "local") return 1;
-      if (a === "anthropic") return -1;
-      if (b === "anthropic") return 1;
       return a.localeCompare(b);
     });
   }, [grouped]);
@@ -174,7 +129,6 @@ export function ModelSelector({ chatId }: ModelSelectorProps) {
   const handleSelect = (modelValue: string) => {
     setOpen(false);
     if (modelValue === currentModel) return;
-
     void updateModel.mutateAsync({ chatId, model: modelValue });
   };
 

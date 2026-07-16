@@ -42,7 +42,6 @@ export const getInstance = protectedProcedure
         composioProjectId: true,
         anthropicModel: true,
         piiRedactionEnabled: true,
-        vercelGatewayEnabled: true,
         openRouterGatewayEnabled: true,
         telegramChatId: true,
         telegramLinkToken: true,

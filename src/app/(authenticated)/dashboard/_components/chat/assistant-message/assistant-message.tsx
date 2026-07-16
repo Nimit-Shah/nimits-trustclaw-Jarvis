@@ -44,13 +44,11 @@ function segmentParts(parts: UIMessage["parts"]): MessageSegment[] {
 interface AssistantMessageProps {
   message: UIMessage;
   status: ChatStatus;
-  onOpenTerminal: () => void;
 }
 
 export function AssistantMessage({
   message,
   status,
-  onOpenTerminal,
 }: AssistantMessageProps) {
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -111,7 +109,6 @@ export function AssistantMessage({
         <CollapsibleToolSection
           toolCalls={toolCalls}
           isRunning={isRunning}
-          onOpenTerminal={onOpenTerminal}
         />
       )}
 
