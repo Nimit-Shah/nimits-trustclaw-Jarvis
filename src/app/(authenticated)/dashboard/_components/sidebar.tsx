@@ -125,13 +125,8 @@ export function Sidebar() {
   );
 
   const handleNewChat = useCallback(() => {
-    const emptyNewChat = chats?.find((c) => c.name === "New Chat");
-    if (emptyNewChat) {
-      navigateToChat(emptyNewChat.id);
-      return;
-    }
     void createChat.mutateAsync({ instanceId });
-  }, [createChat, instanceId, chats, navigateToChat]);
+  }, [createChat, instanceId]);
 
   const handleRename = useCallback(
     (newName: string) => {

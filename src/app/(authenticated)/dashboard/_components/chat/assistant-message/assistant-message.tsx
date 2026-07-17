@@ -103,7 +103,7 @@ export function AssistantMessage({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Collapsible tool section — Claude-style */}
       {toolCalls.length > 0 && (
         <CollapsibleToolSection

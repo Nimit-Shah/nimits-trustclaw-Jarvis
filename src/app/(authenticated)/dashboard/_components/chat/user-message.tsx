@@ -33,7 +33,7 @@ export function UserMessage({ message }: UserMessageProps) {
   return (
     <div className="flex flex-col items-end">
       <div className="relative max-w-[80%]">
-        <div className="rounded-2xl bg-muted px-3 py-2 text-[13px] text-foreground">
+        <div className="rounded-2xl bg-muted px-3 py-2 text-[12px] text-foreground">
           <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>
         </div>
       </div>

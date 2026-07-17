@@ -20,8 +20,8 @@ export default function DashboardLayout({
             <Sidebar />
           </aside>
 
-          {/* Center content — fills remaining space */}
-          <div className="flex-1 min-w-0 flex flex-col">
+          {/* Center content — fills remaining space, scrolls independently */}
+          <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
             {children}
           </div>
         </div>

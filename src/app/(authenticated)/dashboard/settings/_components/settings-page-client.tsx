@@ -1,10 +1,12 @@
 "use client";
 
-import { Settings } from "lucide-react";
+import { useState } from "react";
+import { Shield, MessageSquare, Clock, Brain, AlertTriangle } from "lucide-react";
 import { trpc } from "~/clients/trpc";
 import Link from "next/link";
 import { ErrorDisplay } from "~/components/core/error-display";
 import { ErrorBoundary } from "~/components/core/error-boundary";
+import { cn } from "~/lib/utils";
 import { ModelSettings } from "./model-settings";
 import { TelegramSettings } from "./telegram-settings";
 import { CronJobsSettings } from "./cron-jobs-settings";
@@ -13,8 +15,24 @@ import { DangerZone } from "./danger-zone";
 import { SettingsPageSkeleton } from "./settings-page.skeleton";
 import { useInstanceId } from "~/hooks/use-instance-id";
 
+type SettingsCategory = "security" | "telegram" | "cron" | "memory" | "danger";
+
+const CATEGORIES: Array<{
+  id: SettingsCategory;
+  label: string;
+  icon: typeof Shield;
+  description: string;
+}> = [
+  { id: "security", label: "Security", icon: Shield, description: "PII protection and gateways" },
+  { id: "telegram", label: "Telegram", icon: MessageSquare, description: "Bot connection" },
+  { id: "cron", label: "Scheduled Tasks", icon: Clock, description: "Recurring jobs" },
+  { id: "memory", label: "Memory", icon: Brain, description: "AI memory and profile" },
+  { id: "danger", label: "Danger Zone", icon: AlertTriangle, description: "Delete project" },
+];
+
 export function SettingsPageClient() {
   const [instanceId] = useInstanceId();
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>("security");
   const { data, isLoading, error } = trpc.nimitsJarvis.getInstance.useQuery({ instanceId });
   const instance = data?.instance ?? null;
 
@@ -34,12 +52,12 @@ export function SettingsPageClient() {
 
   if (!instance) {
     return (
-      <div className="mx-auto w-full max-w-2xl p-4 md:p-6">
+      <div className="flex h-full items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-muted-foreground">No Nimits-Jarvis instance found.</p>
+          <p className="text-[13px] text-muted-foreground">No Nimits-Jarvis instance found.</p>
           <Link
             href="/dashboard"
-            className="text-primary mt-2 inline-block hover:underline"
+            className="text-primary mt-2 inline-block text-[13px] hover:underline"
           >
             Go to Nimits-Jarvis
           </Link>
@@ -49,36 +67,83 @@ export function SettingsPageClient() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6 p-4 md:p-6">
-      <div className="flex items-center gap-2">
-        <Settings className="text-muted-foreground h-5 w-5" />
-        <h1 className="text-xl font-semibold md:text-2xl">Settings</h1>
+    <div className="flex h-full">
+      {/* Left: Category nav */}
+      <div className="w-[220px] shrink-0 border-r border-border p-3 space-y-0.5">
+        <h1 className="text-[13px] font-semibold text-foreground px-2 pb-3">Settings</h1>
+        {CATEGORIES.map((cat) => {
+          const Icon = cat.icon;
+          const isActive = activeCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] text-left transition-colors",
+                isActive
+                  ? "bg-accent/60 text-foreground font-medium"
+                  : "hover:bg-accent/30 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-3.5 shrink-0" />
+              <span>{cat.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-        <ErrorBoundary>
-          <ModelSettings
-            piiRedactionEnabled={instance.piiRedactionEnabled}
-            openRouterGatewayEnabled={instance.openRouterGatewayEnabled}
-          />
-        </ErrorBoundary>
+      {/* Right: Category content */}
+      <div className="flex-1 min-w-0 overflow-y-auto p-6">
+        <div className="mx-auto max-w-2xl space-y-4">
+          <div className="pb-2">
+            <h2 className="text-[14px] font-semibold text-foreground">
+              {CATEGORIES.find((c) => c.id === activeCategory)?.label}
+            </h2>
+            <p className="text-[12px] text-muted-foreground">
+              {CATEGORIES.find((c) => c.id === activeCategory)?.description}
+            </p>
+          </div>
 
-      {data?.telegramConfigured && (
-        <ErrorBoundary>
-          <TelegramSettings />
-        </ErrorBoundary>
-      )}
+          {activeCategory === "security" && (
+            <ErrorBoundary>
+              <ModelSettings
+                piiRedactionEnabled={instance.piiRedactionEnabled}
+                openRouterGatewayEnabled={instance.openRouterGatewayEnabled}
+              />
+            </ErrorBoundary>
+          )}
 
-      <ErrorBoundary>
-        <CronJobsSettings />
-      </ErrorBoundary>
+          {activeCategory === "telegram" && data?.telegramConfigured && (
+            <ErrorBoundary>
+              <TelegramSettings />
+            </ErrorBoundary>
+          )}
 
-      <ErrorBoundary>
-        <MemorySettings />
-      </ErrorBoundary>
+          {activeCategory === "telegram" && !data?.telegramConfigured && (
+            <p className="text-[12px] text-muted-foreground">
+              Telegram is not configured on this deployment.
+            </p>
+          )}
 
-      <ErrorBoundary>
-        <DangerZone />
-      </ErrorBoundary>
+          {activeCategory === "cron" && (
+            <ErrorBoundary>
+              <CronJobsSettings />
+            </ErrorBoundary>
+          )}
+
+          {activeCategory === "memory" && (
+            <ErrorBoundary>
+              <MemorySettings />
+            </ErrorBoundary>
+          )}
+
+          {activeCategory === "danger" && (
+            <ErrorBoundary>
+              <DangerZone />
+            </ErrorBoundary>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

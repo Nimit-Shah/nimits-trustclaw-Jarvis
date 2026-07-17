@@ -21,6 +21,15 @@ const SAMPLE_PROMPTS = [
   "Catch me up on latest messages on Slack",
 ];
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "What's keeping you up at this time?";
+  if (hour < 12) return "Good morning. Let's get into it!";
+  if (hour < 17) return "Good afternoon. What's the verdict?";
+  if (hour < 22) return "Good evening. How can I help?";
+  return "What's keeping you up at this time?";
+}
+
 const START_INDEX = 100_000;
 
 export function ChatView() {
@@ -187,7 +196,12 @@ export function ChatView() {
     >
       <div className="flex min-w-0 flex-1 flex-col">
         {isEmpty ? (
-          <div className="flex h-full flex-col items-center justify-center gap-6">
+          <div className="flex h-full flex-col items-center justify-center gap-8">
+            <div className="text-center">
+              <h2 className="text-lg font-medium text-foreground/80">
+                {getGreeting()}
+              </h2>
+            </div>
             <div className="flex flex-wrap justify-center gap-2">
               {SAMPLE_PROMPTS.map((prompt) => (
                 <button
@@ -195,7 +209,7 @@ export function ChatView() {
                   onClick={() => {
                     void handleSend(prompt);
                   }}
-                  className="border-border text-muted-foreground hover:bg-accent hover:text-foreground rounded-full border px-4 py-2 text-sm transition-colors"
+                  className="border-border text-muted-foreground hover:bg-accent hover:text-foreground rounded-full border px-4 py-2 text-[13px] transition-colors"
                 >
                   {prompt}
                 </button>

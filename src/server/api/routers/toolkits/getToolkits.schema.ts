@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const getToolkitsInput = z.object({
-  // Which project instance to scope connections to
   instanceId: z.string().optional(),
   search: z.string().optional(),
   isConnected: z.boolean().optional(),
@@ -17,7 +16,6 @@ export const toolkitItem = z.object({
   logo: z.string(),
   noAuth: z.boolean(),
   connected: z.boolean(),
-  // Connection ID returned only when connected — used by disconnectToolkit
   connectionId: z.string().nullable(),
 });
 
