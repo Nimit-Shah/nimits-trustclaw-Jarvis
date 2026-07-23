@@ -54,14 +54,14 @@ export class PIITransportShield {
    * Deep-scrub a single message, handling both string content and
    * multipart content arrays (tool-call inputs, tool results, text parts).
    */
-  scrubMessage<T extends TransportMessage>(msg: T): T {
+  async scrubMessage<T extends TransportMessage>(msg: T): Promise<T> {
     if (typeof msg.content === "string") {
-      return { ...msg, content: this.vault.redact(msg.content) };
+      return { ...msg, content: await this.vault.redact(msg.content) };
     }
 
     if (Array.isArray(msg.content)) {
-      const scrubbedParts = msg.content.map((part) =>
-        this.scrubContentPart(part),
+      const scrubbedParts = await Promise.all(
+        msg.content.map((part) => this.scrubContentPart(part)),
       );
       return { ...msg, content: scrubbedParts };
     }
@@ -73,31 +73,31 @@ export class PIITransportShield {
    * Scrub an entire message array — the final checkpoint before
    * the payload is serialized and sent over the wire.
    */
-  scrubPayload<T extends TransportMessage>(messages: T[]): T[] {
-    return messages.map((msg) => this.scrubMessage(msg));
+  async scrubPayload<T extends TransportMessage>(messages: T[]): Promise<T[]> {
+    return Promise.all(messages.map((msg) => this.scrubMessage(msg)));
   }
 
   /**
    * Scrub a plain text string. Convenience method for system prompts
    * or other standalone strings that aren't part of a message array.
    */
-  scrubText(text: string): string {
+  async scrubText(text: string): Promise<string> {
     return this.vault.redact(text);
   }
 
   // ─── Private ────────────────────────────────────────────────────
 
-  private scrubContentPart(part: ContentPart): ContentPart {
+  private async scrubContentPart(part: ContentPart): Promise<ContentPart> {
     const result = { ...part };
 
     // Text parts (most common)
     if (result.type === "text" && typeof result.text === "string") {
-      result.text = this.vault.redact(result.text);
+      result.text = await this.vault.redact(result.text);
     }
 
     // Tool-call inputs — deep-walk the input object
     if (result.type === "tool-call" && result.input) {
-      result.input = this.vault.redactToolResult(result.input) as Record<
+      result.input = (await this.vault.redactToolResult(result.input)) as Record<
         string,
         unknown
       >;
@@ -105,7 +105,7 @@ export class PIITransportShield {
 
     // Tool results — deep-walk the output
     if (result.type === "tool-result" && result.output !== undefined) {
-      result.output = this.vault.redactToolResult(result.output);
+      result.output = await this.vault.redactToolResult(result.output);
     }
 
     return result;

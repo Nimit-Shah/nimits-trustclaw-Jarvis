@@ -76,3 +76,9 @@ docs/state/*
 
 # CLI build output
 cli/dist/
+
+# PII identity config (contains personal data — NEVER commit)
+identity.yaml
+
+# DeBERTa ONNX model cache
+.models_cache/

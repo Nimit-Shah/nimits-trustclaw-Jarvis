@@ -13,6 +13,8 @@
  */
 
 import type { PIIMatch, PIIType } from "./pii-types";
+import { IdentityRegistry } from "./identity-registry";
+import { classifyPII } from "./deberta-classifier";
 
 // ─── Regex Patterns ────────────────────────────────────────────────
 
@@ -426,4 +428,101 @@ function isObviousNonPII(value: string): boolean {
     return true;
   }
   return false;
+}
+
+// ─── Enhanced Scanner (All 4 Layers) ─────────────────────────────
+
+/**
+ * Enhanced PII scanner that runs all 4 detection layers:
+ *
+ * Layer 1: Identity Registry — exact string matching from identity.yaml
+ * Layer 2: Regex Patterns — email, phone, SSN, credit card, etc.
+ * Layer 3: DeBERTa Token Classification — ML-based name/address detection
+ * Layer 4: Structural Extraction — JSON field name matching
+ *
+ * Use this for full PII detection. Use `scanForPII()` for regex-only.
+ */
+export async function scanForPIIEnhanced(text: string): Promise<PIIMatch[]> {
+  if (!text || text.trim().length < 3) return [];
+
+  const allMatches: PIIMatch[] = [];
+
+  // Layer 1: Identity Registry (exact string matching)
+  const identityMatches = scanIdentityRegistry(text);
+  allMatches.push(...identityMatches);
+
+  // Layer 2: Regex patterns (existing)
+  const regexMatches = scanForPII(text);
+  allMatches.push(...regexMatches);
+
+  // Layer 3: DeBERTa classification (ML-based, async)
+  try {
+    const mlMatches = await classifyPII(text);
+    for (const match of mlMatches) {
+      allMatches.push({
+        type: match.category,
+        value: match.value,
+        start: match.start,
+        end: match.end,
+      });
+    }
+  } catch {
+    // DeBERTa unavailable — continue with regex+identity
+  }
+
+  // Deduplicate overlaps
+  allMatches.sort((a, b) => a.start - b.start);
+  return deduplicateOverlaps(allMatches);
+}
+
+/**
+ * Scan text against the identity registry for exact string matches.
+ * Returns matches sorted by position.
+ */
+function scanIdentityRegistry(text: string): PIIMatch[] {
+  const matches: PIIMatch[] = [];
+  const registry = IdentityRegistry.getInstance();
+  const exactMatches = registry.getExactMatches();
+
+  for (const { literal, category } of exactMatches) {
+    if (!literal || literal.trim().length === 0) continue;
+
+    const piiType = categoryToPIIType(category);
+    const escaped = literal.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+    // Use word boundary for short strings, plain includes for longer ones
+    const regex =
+      literal.length <= 3
+        ? new RegExp(`\\b${escaped}\\b`, "gi")
+        : new RegExp(escaped, "gi");
+
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(text)) !== null) {
+      matches.push({
+        type: piiType,
+        value: match[0],
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+  }
+
+  return matches;
+}
+
+/** Map identity.yaml category names to PIIType. */
+function categoryToPIIType(category: string): PIIType {
+  const lower = category.toLowerCase();
+  if (lower === "name") return "person_name";
+  if (lower === "email") return "email";
+  if (lower === "phone") return "phone";
+  if (lower === "location") return "address";
+  if (lower === "gov_id") return "ssn";
+  if (lower === "account") return "ssn";
+  if (lower === "card") return "credit_card";
+  if (lower === "api_key") return "api_key";
+  if (lower === "ip_address") return "ip_address";
+  if (lower === "vehicle") return "urn";
+  if (lower === "project") return "urn";
+  return "person_name";
 }

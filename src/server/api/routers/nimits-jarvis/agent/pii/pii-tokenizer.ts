@@ -10,13 +10,19 @@
  * Thread safety: Each request gets its own vault. No shared state.
  */
 
+import { createHash } from "crypto";
 import type { PIIMatch, PIIMapping, PIIType, PIIVaultStats } from "./pii-types";
-import { scanForPII, extractStructuredPII } from "./pii-scanner";
+import { scanForPII, scanForPIIEnhanced, extractStructuredPII } from "./pii-scanner";
 
-/** Token format: [TYPE_N] e.g. [EMAIL_1], [PHONE_2], [NAME_3] */
+/** Token format: [CLAW_TYPE_HASH] e.g. [CLAW_EMAIL_A1B2], [CLAW_NAME_C3D4] */
 function makeToken(type: PIIType, index: number): string {
   const label = type.toUpperCase().replace(/_/g, "_");
-  return `[${label}_${index}]`;
+  const hash = createHash("md5")
+    .update(`${type}:${index}`)
+    .digest("hex")
+    .slice(0, 4)
+    .toUpperCase();
+  return `[CLAW_${label}_${hash}]`;
 }
 
 export class PIIVault {
@@ -61,20 +67,35 @@ export class PIIVault {
   /**
    * Scan a text string for PII, replace all matches with tokens,
    * and return the redacted text.
+   * 1. First replaces any already-registered PII values (from structured extraction).
+   * 2. Then runs enhanced scanner (identity + regex + DeBERTa) for remaining PII.
    */
-  redact(text: string): string {
+  async redact(text: string): Promise<string> {
     if (!text) return text;
 
-    const matches = scanForPII(text);
-    if (matches.length === 0) return text;
+    // Step 1: Replace known PII values registered from structured extraction.
+    // Sort by length descending so longer strings replace first.
+    let result = text;
+    const sortedMappings = [...this.mappings].sort(
+      (a, b) => b.original.length - a.original.length,
+    );
+    for (const mapping of sortedMappings) {
+      if (result.includes(mapping.original)) {
+        result = result.split(mapping.original).join(mapping.token);
+      }
+    }
+
+    // Step 2: Run enhanced scanner for remaining PII patterns
+    const matches = await scanForPIIEnhanced(result);
+    if (matches.length === 0) return result;
 
     // Process matches from end-to-start so indices remain valid
-    let result = text;
     for (let i = matches.length - 1; i >= 0; i--) {
       const match = matches[i]!;
+      // Skip if already tokenized
+      if (match.value.startsWith("[CLAW_")) continue;
       const token = this.registerPII(match.type, match.value);
-      result =
-        result.slice(0, match.start) + token + result.slice(match.end);
+      result = result.slice(0, match.start) + token + result.slice(match.end);
     }
 
     return result;
@@ -100,7 +121,7 @@ export class PIIVault {
    * with known names/emails from the structured data, then call
    * this to redact everything.
    */
-  redactToolResult(result: unknown): unknown {
+  async redactToolResult(result: unknown): Promise<unknown> {
     return this.deepRedact(result);
   }
 
@@ -153,7 +174,7 @@ export class PIIVault {
 
   // ─── Private ───────────────────────────────────────────────────
 
-  private deepRedact(value: unknown, depth = 0): unknown {
+  private async deepRedact(value: unknown, depth = 0): Promise<unknown> {
     // Safety: don't recurse infinitely
     if (depth > 10) return value;
 
@@ -162,13 +183,14 @@ export class PIIVault {
     }
 
     if (Array.isArray(value)) {
-      return value.map((item) => this.deepRedact(item, depth + 1));
+      return Promise.all(value.map((item) => this.deepRedact(item, depth + 1)));
     }
 
     if (value !== null && typeof value === "object") {
       const result: Record<string, unknown> = {};
-      for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-        result[key] = this.deepRedact(val, depth + 1);
+      const entries = Object.entries(value as Record<string, unknown>);
+      for (const [key, val] of entries) {
+        result[key] = await this.deepRedact(val, depth + 1);
       }
       return result;
     }
@@ -202,8 +224,9 @@ export class PIIVault {
    * Redact a single string value:
    * 1. Replace any already-registered PII values (from structural extraction).
    * 2. Scan for new PII patterns (email, phone, etc.) and register+replace them.
+   * Uses enhanced scanner (identity + regex + DeBERTa).
    */
-  private redactString(text: string): string {
+  private async redactString(text: string): Promise<string> {
     if (!text || text.length < 3) return text;
 
     // Step 1: Replace known PII values (registered from structured extraction).
@@ -222,14 +245,14 @@ export class PIIVault {
     // Step 2: Scan for new PII patterns in the (partially redacted) text
     // We re-scan because the text may contain PII that wasn't in the
     // structured fields (e.g. email addresses in a message body).
-    const newMatches = scanForPII(result);
+    const newMatches = await scanForPIIEnhanced(result);
     if (newMatches.length === 0) return result;
 
     // Process from end to preserve indices
     for (let i = newMatches.length - 1; i >= 0; i--) {
       const match = newMatches[i]!;
       // Skip if this span was already replaced by a token
-      if (match.value.startsWith("[") && match.value.endsWith("]")) continue;
+      if (match.value.startsWith("[CLAW_")) continue;
 
       const token = this.registerPII(match.type, match.value);
       result =

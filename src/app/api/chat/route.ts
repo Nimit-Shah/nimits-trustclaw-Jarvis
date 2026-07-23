@@ -53,21 +53,21 @@ async function resolveChatId(instanceId: string, chatId?: string): Promise<strin
 
 /**
  * PII token pattern for detecting partial tokens at chunk boundaries.
- * Matches tokens like [EMAIL_1], [PHONE_2], [NAME_3].
+ * Matches tokens like [CLAW_EMAIL_A1B2], [CLAW_PHONE_C3D4], [CLAW_NAME_E5F6].
  */
-const PII_TOKEN_RE = /\[[A-Z][A-Z_]*\d*\]/g;
+const PII_TOKEN_RE = /\[CLAW_[A-Z]+_[A-F0-9]{4}\]/g;
 
 /**
  * Checks if the tail of a string starts what looks like a partial PII token.
- * e.g. "text [EMA" or "text [PHONE_" — these could be the start of "[EMAIL_1]"
+ * e.g. "text [CLAW_EMA" or "text [CLAW_EMAIL_" — these could be the start of "[CLAW_EMAIL_A1B2]"
  * that got split by an SSE chunk boundary.
  */
 function partialTokenAtEnd(str: string): string {
   const lastBracket = str.lastIndexOf("[");
   if (lastBracket === -1) return "";
   const tail = str.slice(lastBracket);
-  // Only buffer if tail looks like the start of a PII token pattern
-  if (/^\[[A-Z]+(?:_\d*)?$/.test(tail)) return tail;
+  // Only buffer if tail looks like the start of a CLAW PII token pattern
+  if (/^\[CLAW_[A-Z]+(?:_[A-F0-9]{0,3})?$/.test(tail)) return tail;
   return "";
 }
 

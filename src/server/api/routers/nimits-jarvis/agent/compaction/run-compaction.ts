@@ -86,9 +86,9 @@ async function summarize(
   const safeConversation = sanitizeString(conversationText);
   const safePreviousSummary = previousSummary ? sanitizeString(previousSummary) : null;
 
-  const redactedConversation = vault ? vault.redact(safeConversation) : safeConversation;
+  const redactedConversation = vault ? await vault.redact(safeConversation) : safeConversation;
   const redactedPreviousSummary = vault && safePreviousSummary
-    ? vault.redact(safePreviousSummary)
+    ? await vault.redact(safePreviousSummary)
     : safePreviousSummary;
 
   let prompt: string;
@@ -151,7 +151,7 @@ async function stagedSummarize(
   // real PII values that must be redacted before reaching an external merge LLM.
   const mergeVault = mergeProvider !== "ollama" ? new PIIVault() : null;
   const mergeContent = `<summary-1>\n${firstSummary}\n</summary-1>\n\n<summary-2>\n${secondSummary}\n</summary-2>\n\n${MERGE_SUMMARIES_PROMPT}`;
-  const safeMergeContent = mergeVault ? mergeVault.redact(mergeContent) : mergeContent;
+  const safeMergeContent = mergeVault ? await mergeVault.redact(mergeContent) : mergeContent;
 
   const mergeController = new AbortController();
   const mergeTimeout = setTimeout(() => mergeController.abort(), 30_000);

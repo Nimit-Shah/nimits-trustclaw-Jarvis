@@ -53,9 +53,9 @@ function wrapToolExecutors(tools: ToolSet, vault: PIIVault | null): ToolSet {
       wrapped[name] = {
         ...tool,
         execute: async (...args: Parameters<typeof originalExecute>) => {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- tool execute returns unknown/any; deepSanitize preserves the shape
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           const result = await originalExecute(...args);
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- deepSanitize accepts unknown
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           const sanitized = deepSanitize(result);
 
           // If a PII vault is active, extract structured PII from known
@@ -63,7 +63,7 @@ function wrapToolExecutors(tools: ToolSet, vault: PIIVault | null): ToolSet {
           if (vault) {
             vault.registerStructuredPII(sanitized);
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-            return vault.redactToolResult(sanitized);
+            return await vault.redactToolResult(sanitized);
           }
 
           // eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -81,46 +81,53 @@ function wrapToolExecutors(tools: ToolSet, vault: PIIVault | null): ToolSet {
  * Redacts a list of reconstructed messages before they are sent to the LLM.
  * Returns a new deep-cloned array with text contents redacted.
  */
-function redactContextMessages(
+async function redactContextMessages(
   messages: ReconstructedMessage[],
   vault: PIIVault,
-): ReconstructedMessage[] {
-  return messages.map((msg) => {
+): Promise<ReconstructedMessage[]> {
+  const result: ReconstructedMessage[] = [];
+  for (const msg of messages) {
     if (msg.role === "user") {
-      return { ...msg, content: vault.redact(msg.content) };
-    }
-    if (msg.role === "assistant") {
+      result.push({ ...msg, content: await vault.redact(msg.content) });
+    } else if (msg.role === "assistant") {
       if (typeof msg.content === "string") {
-        return { ...msg, content: vault.redact(msg.content) };
-      }
-      return {
-        ...msg,
-        content: msg.content.map((part) => {
+        result.push({ ...msg, content: await vault.redact(msg.content) });
+      } else {
+        const redactedParts = [];
+        for (const part of msg.content) {
           if (part.type === "text") {
-            return { ...part, text: vault.redact(part.text) };
+            redactedParts.push({ ...part, text: await vault.redact(part.text) });
+          } else if (part.type === "tool-call") {
+            redactedParts.push({
+              ...part,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              input: (await vault.redactToolResult(part.input)) as Record<string, unknown>,
+            });
+          } else {
+            redactedParts.push(part);
           }
-          if (part.type === "tool-call") {
+        }
+        result.push({ ...msg, content: redactedParts });
+      }
+    } else if (msg.role === "tool") {
+      const redactedParts = [];
+      for (const part of msg.content) {
+        if (part.type === "tool-result") {
+          redactedParts.push({
+            ...part,
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            return { ...part, input: vault.redactToolResult(part.input) as Record<string, unknown> };
-          }
-          return part;
-        }),
-      };
+            output: (await vault.redactToolResult(part.output)) as any,
+          });
+        } else {
+          redactedParts.push(part);
+        }
+      }
+      result.push({ ...msg, content: redactedParts });
+    } else {
+      result.push(msg);
     }
-    if (msg.role === "tool") {
-      return {
-        ...msg,
-        content: msg.content.map((part) => {
-          if (part.type === "tool-result") {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            return { ...part, output: vault.redactToolResult(part.output) as any };
-          }
-          return part;
-        }),
-      };
-    }
-    return msg;
-  });
+  }
+  return result;
 }
 
 interface PrepareAgentRunParams {
@@ -307,7 +314,7 @@ export async function prepareAgentRun(
   // PII from the user's identity/soul/user prompts. Scrub it before
   // it's baked into the agent's instructions.
   const safeSystemPrompt = transportShield
-    ? transportShield.scrubText(systemPrompt)
+    ? await transportShield.scrubText(systemPrompt)
     : systemPrompt;
 
   const agent = new ToolLoopAgent({
@@ -457,7 +464,7 @@ export async function prepareAgentRun(
   // Create a deep-cloned array with redacted text for the LLM prompt.
   // We keep the original `prunedMessages` above for runPostResponseTasks.
   let redactedMessages = piiVault
-    ? redactContextMessages(prunedMessages, piiVault)
+    ? await redactContextMessages(prunedMessages, piiVault)
     : prunedMessages;
 
   // ── Final transport-layer checkpoint ──
@@ -466,9 +473,9 @@ export async function prepareAgentRun(
   // through tool results, reasoning text, or partial redaction gaps.
   // The shield shares the same PIIVault, so tokens stay consistent.
   if (transportShield) {
-    redactedMessages = transportShield.scrubPayload(
+    redactedMessages = (await transportShield.scrubPayload(
       redactedMessages as any,
-    ) as typeof redactedMessages;
+    )) as typeof redactedMessages;
   }
 
   return {

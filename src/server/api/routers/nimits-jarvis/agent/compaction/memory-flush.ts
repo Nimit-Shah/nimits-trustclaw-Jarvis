@@ -61,7 +61,7 @@ export async function runMemoryFlush(
       !isOllama
         ? piiVault ?? new PIIVault()
         : null;
-    const safeContext = vault ? vault.redact(contextSummary) : contextSummary;
+    const safeContext = vault ? await vault.redact(contextSummary) : contextSummary;
 
     const flushPrompt = `Here is the recent conversation context:\n\n${safeContext}\n\n${FLUSH_USER_PROMPT}`;
 
